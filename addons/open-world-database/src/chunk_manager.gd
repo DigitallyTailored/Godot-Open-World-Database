@@ -231,7 +231,8 @@ func _load_node(node_info: Dictionary):
 	# Check if scene is a file path or node type
 	if node_info.scene.begins_with("res://"):
 		# Load from scene file
-		var scene = ResourceLoader.load(node_info.scene, "", ResourceLoader.CACHE_MODE_REUSE)
+		#var scene = ResourceLoader.load(node_info.scene, "", ResourceLoader.CACHE_MODE_REUSE)
+		var scene = load(node_info.scene)
 		instance = scene.instantiate()
 	else:
 		# Create from node type
@@ -248,6 +249,16 @@ func _load_node(node_info: Dictionary):
 	if node_info.parent_uid != "":
 		parent_node = owdb.get_node_by_uid(node_info.parent_uid)
 	
+	
+	# Set properties before we instance so they can be used by the _ready function
+	for prop_name in node_info.properties:
+		if prop_name not in ["position", "rotation", "scale", "size"]:
+			if instance.has_method("set") and prop_name in instance:
+				var stored_value = node_info.properties[prop_name]
+				var current_value = instance.get(prop_name)
+				var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
+				instance.set(prop_name, converted_value)
+				
 	# Add to parent or owdb
 	if parent_node:
 		parent_node.add_child(instance)
@@ -263,13 +274,6 @@ func _load_node(node_info: Dictionary):
 		instance.global_rotation = node_info.rotation
 		instance.scale = node_info.scale
 	
-	for prop_name in node_info.properties:
-		if prop_name not in ["position", "rotation", "scale", "size"]:
-			if instance.has_method("set") and prop_name in instance:
-				var stored_value = node_info.properties[prop_name]
-				var current_value = instance.get(prop_name)
-				var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
-				instance.set(prop_name, converted_value)
 	
 func _unload_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
 	# Never unload ALWAYS_LOADED chunks

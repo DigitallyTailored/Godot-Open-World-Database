@@ -24,7 +24,7 @@ var is_loading: bool = false
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		get_tree().auto_accept_quit = false
-		
+	
 	reset()
 	is_loading = true
 	database.load_database()

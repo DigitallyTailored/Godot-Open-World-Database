@@ -22,3 +22,7 @@ project/assembly_name="open-world-db"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/open-world-database/plugin.cfg", "res://addons/script-ide/plugin.cfg")
+
+[global_group]
+
+player=""

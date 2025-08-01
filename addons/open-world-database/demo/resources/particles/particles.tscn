@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3 uid="uid://c4rx47ai4f1ax"]
+
+[ext_resource type="Script" uid="uid://dtn6h7y5jb874" path="res://addons/open-world-database/demo/resources/particles/particles.gd" id="1_u1upb"]
+[ext_resource type="Material" uid="uid://b6glli2wgf2pp" path="res://addons/open-world-database/demo/resources/particles/particles_material.tres" id="2_qmjhp"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_cjjfd"]
+angle_min = -90.0
+angle_max = 90.0
+direction = Vector3(0, 1, 0)
+spread = 90.0
+initial_velocity_min = 2.0
+initial_velocity_max = 3.0
+gravity = Vector3(0, -5, 0)
+scale_max = 2.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_cjjfd"]
+material = ExtResource("2_qmjhp")
+radial_segments = 4
+rings = 1
+
+[node name="Particles" type="Node3D"]
+script = ExtResource("1_u1upb")
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="."]
+amount = 5
+lifetime = 5.0
+explosiveness = 1.0
+process_material = SubResource("ParticleProcessMaterial_cjjfd")
+draw_pass_1 = SubResource("SphereMesh_cjjfd")

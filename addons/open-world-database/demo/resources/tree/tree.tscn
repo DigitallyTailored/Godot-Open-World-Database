@@ -1,0 +1,68 @@
+[gd_scene load_steps=8 format=3 uid="uid://bpdhh3x8mbrdu"]
+
+[ext_resource type="Texture2D" uid="uid://cqe7he3kmm1tx" path="res://addons/open-world-database/demo/resources/tree/bark.png" id="1_p7nij"]
+[ext_resource type="Texture2D" uid="uid://cwfocdej0jebm" path="res://addons/open-world-database/demo/resources/tree/foliage.png" id="2_21k6p"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wo8po"]
+top_radius = 0.1
+bottom_radius = 0.2
+radial_segments = 7
+rings = 0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vmc8x"]
+albedo_color = Color(0.785936, 0.785936, 0.785935, 1)
+albedo_texture = ExtResource("1_p7nij")
+uv1_triplanar = true
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_p7nij"]
+points = PackedVector3Array(-0.210833, -1.01587, -0.0690485, -0.179087, -1.01587, -0.132541, -0.115595, 1.01587, -0.0690485, -0.0521025, -1.01587, 0.216585, 0.106547, -1.01587, -0.196033, 0.106547, 1.01587, 0.0896009, 0.201785, -1.01587, 0.0896009, -0.115595, 0.92061, 0.0896009, 0.106547, 1.01587, -0.0690485, -0.179087, -0.825347, 0.153093, -0.0838485, 0.730084, -0.132541, 0.201785, -0.476116, -0.0690485, 0.0430549, -0.793527, 0.216585, -0.115595, -0.698264, -0.196033, -0.0521025, 1.01587, 0.121347, 0.0748009, 0.761905, -0.132541, 0.170039, -0.730084, 0.153093, -0.210833, -0.666642, -0.00555643, 0.201785, -1.01587, -0.100795, 0.106547, -0.634821, -0.196033, 0.138293, 0.825347, -0.00555643, 0.0113088, 0.603001, 0.153093, -0.179087, -1.01587, 0.153093, -0.210833, -0.666642, -0.0690485, -0.115595, -1.01587, -0.196033, 0.170039, -1.01587, 0.153093, -0.147341, 0.634821, -0.00555643, -0.0203564, -0.666642, 0.216585, -0.0838485, 1.01587, -0.100795, 0.201785, -0.476116, -0.00555643, 0.0430549, 1.01587, 0.121347, 0.138293, 0.634821, -0.0690485)
+
+[sub_resource type="SphereMesh" id="SphereMesh_3ow8u"]
+radius = 1.0
+height = 2.0
+radial_segments = 7
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aywpg"]
+transparency = 2
+alpha_scissor_threshold = 0.777
+alpha_antialiasing_mode = 0
+albedo_color = Color(0.669271, 0.644099, 0.308883, 1)
+albedo_texture = ExtResource("2_21k6p")
+uv1_scale = Vector3(0.5, 0.5, 0.5)
+uv1_triplanar = true
+uv1_triplanar_sharpness = 150.0
+
+[node name="Tree" type="Node3D"]
+
+[node name="Node3D" type="Node3D" parent="."]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, -0.381969, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.770638, 0)
+mesh = SubResource("CylinderMesh_wo8po")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_vmc8x")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Node3D/MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D/MeshInstance3D/StaticBody3D"]
+shape = SubResource("ConvexPolygonShape3D_p7nij")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.577047, 2.35696, 0.551814)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.514032, 2.64833, 0.165647)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.344217, 2.09396, -0.729487)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")

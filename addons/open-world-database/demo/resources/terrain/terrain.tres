@@ -1,0 +1,19 @@
+[gd_resource type="ShaderMaterial" load_steps=7 format=3 uid="uid://gcfo5rj6r23d"]
+
+[ext_resource type="Shader" uid="uid://dl7i3rm6yaurv" path="res://addons/open-world-database/demo/resources/terrain/terrain.gdshader" id="1_56e7c"]
+[ext_resource type="Texture2D" uid="uid://dsoopkt7hlk5i" path="res://addons/open-world-database/demo/resources/terrain/textures/grass.jpg" id="2_3oxdw"]
+[ext_resource type="Texture2D" uid="uid://2khr3dukcfig" path="res://addons/open-world-database/demo/resources/terrain/textures/rock.jpg" id="3_hnaf3"]
+[ext_resource type="Texture2D" uid="uid://djwwl6wow11i4" path="res://addons/open-world-database/demo/resources/terrain/textures/sand.jpg" id="4_02n2p"]
+[ext_resource type="Texture2D" uid="uid://dpinsgvxx6q3t" path="res://addons/open-world-database/demo/resources/terrain/textures/snow.png" id="5_hnaf3"]
+[ext_resource type="Texture2D" uid="uid://cnmlvrcird0q4" path="res://addons/open-world-database/demo/resources/terrain/textures/silt.jpg" id="6_hnaf3"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_56e7c")
+shader_parameter/water_texture = ExtResource("6_hnaf3")
+shader_parameter/sand_texture = ExtResource("4_02n2p")
+shader_parameter/grass_texture = ExtResource("2_3oxdw")
+shader_parameter/rock_texture = ExtResource("3_hnaf3")
+shader_parameter/snow_texture = ExtResource("5_hnaf3")
+shader_parameter/texture_scale = 2.84
+shader_parameter/blend_sharpness = 5.0

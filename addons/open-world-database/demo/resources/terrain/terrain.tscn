@@ -1,0 +1,55 @@
+[gd_scene load_steps=9 format=3 uid="uid://csur415hhqfgi"]
+
+[ext_resource type="Script" uid="uid://dt40ew62lcx8f" path="res://addons/open-world-database/demo/resources/terrain/terrain.gd" id="1_r4ad7"]
+[ext_resource type="Material" uid="uid://gcfo5rj6r23d" path="res://addons/open-world-database/demo/resources/terrain/terrain.tres" id="2_gc4cx"]
+[ext_resource type="Texture2D" uid="uid://cnmlvrcird0q4" path="res://addons/open-world-database/demo/resources/terrain/textures/silt.jpg" id="3_gcoin"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_bsqx8"]
+size = Vector2(1000, 1000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tmr3h"]
+albedo_color = Color(0.721441, 0.721441, 0.721441, 1)
+albedo_texture = ExtResource("3_gcoin")
+uv1_scale = Vector3(0.5, 0.5, 0.5)
+uv1_triplanar = true
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gcoin"]
+size = Vector3(1000, 1, 1000)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_tmr3h"]
+size = Vector2(1000, 1000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iuy40"]
+transparency = 1
+albedo_color = Color(0, 0.175667, 0.31, 0.945098)
+metallic = 1.0
+metallic_specular = 1.0
+roughness = 0.0
+uv1_triplanar = true
+proximity_fade_enabled = true
+proximity_fade_distance = 0.11
+
+[node name="Terrain" type="Node3D"]
+script = ExtResource("1_r4ad7")
+terrain_size = Vector2i(64, 64)
+terrain_scale = Vector2(100, 100)
+height_scale = 5.0
+noise_frequency = 0.05
+material = ExtResource("2_gc4cx")
+grass_level = 0.35
+rock_level = 0.95
+auto_regenerate = true
+
+[node name="bedrock" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_bsqx8")
+surface_material_override/0 = SubResource("StandardMaterial3D_tmr3h")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="bedrock"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="bedrock/StaticBody3D"]
+shape = SubResource("BoxShape3D_gcoin")
+
+[node name="Water" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.38941, 0)
+mesh = SubResource("PlaneMesh_tmr3h")
+surface_material_override/0 = SubResource("StandardMaterial3D_iuy40")

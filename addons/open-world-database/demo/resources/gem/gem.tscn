@@ -1,0 +1,37 @@
+[gd_scene load_steps=6 format=3 uid="uid://cnlgfasqpoub2"]
+
+[ext_resource type="Script" uid="uid://dampo4awcnnfn" path="res://addons/open-world-database/demo/resources/gem/gem.gd" id="1_4gmec"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_4gmec"]
+height = 1.5
+radial_segments = 4
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i2nby"]
+transparency = 1
+albedo_color = Color(0, 1, 0, 1)
+metallic = 0.81
+roughness = 0.0
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_7amvq"]
+points = PackedVector3Array(-0.25, -0.25, -0.25, 0.25, 0.25, 0.25, 0.25, -0.25, 0.25, 0.25, 0.25, -0.25, -0.25, 0.25, 0.25, 0.25, -0.25, -0.25, -0.25, -0.25, 0.25, -0.25, 0.25, -0.25)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_i2nby"]
+height = 0.985
+radius = 0.345
+
+[node name="Gem" type="Area3D"]
+script = ExtResource("1_4gmec")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.147343, 0, -0.371873, 0, 0.4, 0, 0.371873, 0, 0.147343, 0, 0.185115, 0)
+mesh = SubResource("SphereMesh_4gmec")
+surface_material_override/0 = SubResource("StandardMaterial3D_i2nby")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D"]
+shape = SubResource("ConvexPolygonShape3D_7amvq")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CylinderShape3D_i2nby")
