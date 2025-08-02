@@ -9,21 +9,16 @@ func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
 
 func handle_child_entered_tree(node: Node):
-	
 	if not (node is Node3D or node.get_class() == "Node"):
-		#print("UNSUPPORTED NODE TYPE ADDED - must be Node or Node3D ancestor ", node.name, " ", node.get_class())
 		return
 
-		
 	if !owdb.is_ancestor_of(node):
 		return
 		
 	if node.is_in_group("owdb_ignore"):
 		return
 	
-	#this is to ensure external scene children are not added - I don't like this solution!
-	var children = node.get_children()
-	for child in children:
+	for child in node.get_children():
 		if !child.is_in_group("owdb"):
 			child.add_to_group("owdb_ignore")
 	
@@ -40,7 +35,6 @@ func handle_child_entered_tree(node: Node):
 	_handle_new_node(node)
 
 func handle_child_exiting_tree(node: Node):
-			
 	if owdb.is_loading or !node.is_in_group("owdb"):
 		return
 	
@@ -70,7 +64,6 @@ func _handle_new_node(node: Node):
 		node.name = uid
 	
 	var uid = node.get_meta("_owd_uid")
-	
 	var existing_node = owdb.get_node_by_uid(uid)
 	if existing_node != null and existing_node != node:
 		var new_uid = node.name.split('-')[0] + '-' + NodeUtils.generate_uid()
@@ -78,7 +71,6 @@ func _handle_new_node(node: Node):
 		node.name = new_uid
 		uid = new_uid
 	
-	# Defer the position-dependent operations to ensure transform is updated
 	call_deferred("_handle_new_node_positioning", node)
 
 func _handle_new_node_positioning(node: Node):
@@ -91,42 +83,36 @@ func _handle_new_node_positioning(node: Node):
 	
 	owdb.node_monitor.update_stored_node(node)
 	
-	# Calculate node properties for chunk assignment (now with proper position)
 	var node_size = NodeUtils.calculate_node_size(node)
 	var node_position = node.global_position if node is Node3D else Vector3.ZERO
 	var size_cat = owdb.get_size_category(node_size)
 	var chunk_pos = owdb.get_chunk_position(node_position, size_cat)
 	
-	# ALWAYS add to chunk lookup - this is the index of all nodes
 	owdb.add_to_chunk_lookup(uid, node_position, node_size)
 	
 	if owdb.debug_enabled:
 		print("NODE ADDED: ", node.name, " at position: ", node_position, " - ", owdb.get_total_database_nodes(), " total nodes")
 	
-	# If chunk is not loaded, unload this node
 	if not owdb.is_chunk_loaded(size_cat, chunk_pos):
 		if owdb.debug_enabled:
 			print("NODE ADDED TO UNLOADED CHUNK - UNLOADING: ", node.name)
 		owdb.call_deferred("_unload_node_not_in_chunk", node)
 		return
 
-
 func handle_node_rename(node: Node) -> bool:
 	if not node.has_meta("_owd_uid"):
 		return false
 	
 	var old_uid = node.get_meta("_owd_uid")
-	var new_name = node.name
-	
-	if old_uid == new_name:
+	if old_uid == node.name:
 		return false
 	
-	node.set_meta("_owd_uid", new_name)
+	node.set_meta("_owd_uid", node.name)
 	
 	if owdb.node_monitor.stored_nodes.has(old_uid):
 		var node_info = owdb.node_monitor.stored_nodes[old_uid]
-		node_info.uid = new_name
-		owdb.node_monitor.stored_nodes[new_name] = node_info
+		node_info.uid = node.name
+		owdb.node_monitor.stored_nodes[node.name] = node_info
 		owdb.node_monitor.stored_nodes.erase(old_uid)
 	
 	# Update chunk lookup
@@ -135,12 +121,12 @@ func handle_node_rename(node: Node) -> bool:
 			var uid_list = owdb.chunk_lookup[size][chunk_pos]
 			var old_index = uid_list.find(old_uid)
 			if old_index >= 0:
-				uid_list[old_index] = new_name
+				uid_list[old_index] = node.name
 	
 	# Update parent references
 	for child_uid in owdb.node_monitor.stored_nodes:
 		var child_info = owdb.node_monitor.stored_nodes[child_uid]
 		if child_info.parent_uid == old_uid:
-			child_info.parent_uid = new_name
+			child_info.parent_uid = node.name
 	
 	return true

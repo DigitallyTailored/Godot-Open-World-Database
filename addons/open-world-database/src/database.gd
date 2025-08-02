@@ -32,35 +32,23 @@ func save_database():
 		return
 	
 	# First, update all currently loaded nodes and handle size/position changes
-	var all_nodes = owdb.get_all_owd_nodes()
-	#print(all_nodes)
-	for node in all_nodes:
+	for node in owdb.get_all_owd_nodes():
 		var uid = node.get_meta("_owd_uid", "")
 		if uid == "":
 			continue
-		# Check for renames
+		
 		owdb.handle_node_rename(node)
 		
-		# Get old info for comparison
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})
-		
-		# Update stored node with forced size recalculation
 		owdb.node_monitor.update_stored_node(node, true)
 		
 		# Check if node needs to be moved to different chunk
 		if old_info.has("position") and old_info.has("size"):
 			var new_info = owdb.node_monitor.stored_nodes[uid]
-			var old_pos = old_info.position
-			var old_size = old_info.size
-			var new_pos = new_info.position
-			var new_size = new_info.size
 			
-			# Check if position or size changed enough to warrant chunk reallocation
-			if old_pos.distance_to(new_pos) > 0.01 or abs(old_size - new_size) > 0.01:
-				# Remove from old chunk
-				owdb.remove_from_chunk_lookup(uid, old_pos, old_size)
-				# Add to new chunk
-				owdb.add_to_chunk_lookup(uid, new_pos, new_size)
+			if old_info.position.distance_to(new_info.position) > 0.01 or abs(old_info.size - new_info.size) > 0.01:
+				owdb.remove_from_chunk_lookup(uid, old_info.position, old_info.size)
+				owdb.add_to_chunk_lookup(uid, new_info.position, new_info.size)
 	
 	var file = FileAccess.open(db_path, FileAccess.WRITE)
 	if not file:
@@ -69,8 +57,7 @@ func save_database():
 	
 	var top_level_uids = []
 	for uid in owdb.node_monitor.stored_nodes:
-		var info = owdb.node_monitor.stored_nodes[uid]
-		if info.parent_uid == "":
+		if owdb.node_monitor.stored_nodes[uid].parent_uid == "":
 			top_level_uids.append(uid)
 	
 	top_level_uids.sort()
@@ -87,13 +74,10 @@ func _write_node_recursive(file: FileAccess, uid: String, depth: int):
 	if info.is_empty():
 		return
 	
-	var indent = "\t".repeat(depth)
-	var props_str = "{}"
-	if info.properties.size() > 0:
-		props_str = JSON.stringify(info.properties)
+	var props_str = "{}" if info.properties.size() == 0 else JSON.stringify(info.properties)
 	
 	var line = "%s%s|\"%s\"|%s,%s,%s|%s,%s,%s|%s,%s,%s|%s|%s" % [
-		indent, uid, info.scene,
+		"\t".repeat(depth), uid, info.scene,
 		info.position.x, info.position.y, info.position.z,
 		info.rotation.x, info.rotation.y, info.rotation.z,
 		info.scale.x, info.scale.y, info.scale.z,
@@ -104,8 +88,7 @@ func _write_node_recursive(file: FileAccess, uid: String, depth: int):
 	
 	var child_uids = []
 	for child_uid in owdb.node_monitor.stored_nodes:
-		var child_info = owdb.node_monitor.stored_nodes[child_uid]
-		if child_info.parent_uid == uid:
+		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == uid:
 			child_uids.append(child_uid)
 	
 	child_uids.sort()
@@ -136,8 +119,7 @@ func load_database():
 		while depth < line.length() and line[depth] == "\t":
 			depth += 1
 		
-		var clean_line = line.strip_edges()
-		var info = _parse_line(clean_line)
+		var info = _parse_line(line.strip_edges())
 		if not info:
 			continue
 		
@@ -170,7 +152,7 @@ func _parse_line(line: String) -> Dictionary:
 	if parts.size() < 6:
 		return {}
 	
-	var info = {
+	return {
 		"uid": parts[0],
 		"scene": parts[1].strip_edges().trim_prefix("\"").trim_suffix("\""),
 		"parent_uid": "",
@@ -180,8 +162,6 @@ func _parse_line(line: String) -> Dictionary:
 		"size": parts[5].to_float(),
 		"properties": _parse_properties(parts[6] if parts.size() > 6 else "{}")
 	}
-	
-	return info
 
 func _parse_vector3(vector_str: String) -> Vector3:
 	var components = vector_str.split(",")

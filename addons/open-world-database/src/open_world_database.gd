@@ -20,7 +20,6 @@ var node_monitor: NodeMonitor
 var node_handler: NodeHandler
 var is_loading: bool = false
 
-
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		get_tree().auto_accept_quit = false
@@ -28,11 +27,7 @@ func _ready() -> void:
 	reset()
 	is_loading = true
 	database.load_database()
-	#chunk_manager._update_camera_chunks()
 	is_loading = false
-	
-	#if debug_enabled:
-		#debug()
 
 func reset():
 	is_loading = true
@@ -43,8 +38,6 @@ func reset():
 	node_handler = NodeHandler.new(self)
 	setup_listeners(self)
 	is_loading = false
-	
-	# Reset debug counters
 
 func setup_listeners(node: Node):
 	if not node.child_entered_tree.is_connected(_on_child_entered_tree):
@@ -63,8 +56,7 @@ func get_all_owd_nodes() -> Array[Node]:
 	return get_tree().get_nodes_in_group("owdb")
 
 func get_node_by_uid(uid: String) -> Node:
-	var owdb_nodes = get_tree().get_nodes_in_group("owdb")
-	for node in owdb_nodes:
+	for node in get_tree().get_nodes_in_group("owdb"):
 		if node.has_meta("_owd_uid") and node.get_meta("_owd_uid") == uid:
 			return node
 	return null
@@ -124,21 +116,16 @@ func _process(_delta: float) -> void:
 		chunk_manager._update_camera_chunks()
 
 func debug():
-	var loaded_nodes = get_currently_loaded_nodes()
-	var total_nodes = get_total_database_nodes()
-	
 	print("=== OWDB DEBUG INFO ===")
-	print("Nodes currently loaded: ", loaded_nodes)
-	print("Total nodes in database: ", total_nodes)
+	print("Nodes currently loaded: ", get_currently_loaded_nodes())
+	print("Total nodes in database: ", get_total_database_nodes())
 	print("Loaded chunks per size:")
 	
 	for size in chunk_manager.loaded_chunks:
-		var chunk_count = chunk_manager.loaded_chunks[size].size()
-		print("  ", Size.keys()[size], ": ", chunk_count, " chunks")
+		print("  ", Size.keys()[size], ": ", chunk_manager.loaded_chunks[size].size(), " chunks")
 	
 	print("\nCurrently loaded nodes:")
-	var owdb_nodes = get_all_owd_nodes()
-	for node in owdb_nodes:
+	for node in get_all_owd_nodes():
 		print("  - ", node.get_meta("_owd_uid", "NO_UID"), " : ", node.name)
 	
 	database.debug()
@@ -155,19 +142,14 @@ func _unload_node_not_in_chunk(node: Node):
 	if not is_instance_valid(node):
 		return
 	
-	# Temporarily set loading to prevent child_exiting_tree from calling _check_node_removal
 	var was_loading = is_loading
 	is_loading = true
 	
 	if debug_enabled:
-		var total_nodes = get_total_database_nodes()
-		print("NODE REMOVED (unloaded chunk): ", node.name, " - ", total_nodes, " total database nodes")
+		print("NODE REMOVED (unloaded chunk): ", node.name, " - ", get_total_database_nodes(), " total database nodes")
 	
 	node.free()
-	
-	# Restore loading state
 	is_loading = was_loading
-
 
 func _check_node_removal(node):
 	if is_instance_valid(node) and node.is_inside_tree() and self.is_ancestor_of(node):
@@ -184,8 +166,7 @@ func _check_node_removal(node):
 			node_monitor.stored_nodes.erase(uid)
 			
 			if debug_enabled:
-				var total_nodes = get_total_database_nodes()
-				print("NODE REMOVED FROM DATABASE: ", uid, " - ", total_nodes, " total database nodes")
+				print("NODE REMOVED FROM DATABASE: ", uid, " - ", get_total_database_nodes(), " total database nodes")
 	
 	if debug_enabled and not was_in_database:
 		print("NODE REMOVED (not in database): ", node.name if is_instance_valid(node) else "Unknown")
