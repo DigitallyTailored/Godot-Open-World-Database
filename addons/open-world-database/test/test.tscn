@@ -8,4 +8,6 @@
 script = ExtResource("1_fvglr")
 size_thresholds = Array[float]([1.0, 4.0, 8.0])
 chunk_sizes = Array[float]([2.0, 4.0, 8.0])
+chunk_load_range = 2
+debug_enabled = true
 metadata/_custom_type_script = "uid://b46e3mat8dx5"

@@ -354,8 +354,6 @@ func take_damage(damage: int, knockback_direction: Vector3 = Vector3.ZERO):
 	if is_dead:
 		return
 	
-	$sfx/hit.pitch_scale = randf_range(0.8,1.2)
-	$sfx/hit.play()
 	health -= damage
 	update_health_bar()
 	
@@ -366,6 +364,13 @@ func take_damage(damage: int, knockback_direction: Vector3 = Vector3.ZERO):
 	# Update expression based on new health
 	update_facial_expression()
 	
+	if health <= 0:
+		$sfx/hit.pitch_scale = randf_range(0.4,0.6)
+		$sfx/hit.play()
+	else:
+		$sfx/hit.pitch_scale = randf_range(0.8,1.2)
+		$sfx/hit.play()
+		
 	# Brief hurt expression - force update regardless of last expression
 	if not is_dead:
 		var original_expression = current_expression
@@ -377,11 +382,11 @@ func take_damage(damage: int, knockback_direction: Vector3 = Vector3.ZERO):
 			last_expression = original_expression  # Update tracking variable
 			
 	if health <= 0:
-		Particle.setup(self, position, Color.RED, 20)
+		Particle.setup(self, position, Color.YELLOW, 20)
 		knockback_velocity = knockback_velocity * 2
 		die()
 	else:
-		Particle.setup(self, position, Color.RED, 2)
+		Particle.setup(self, position, Color.YELLOW, 2)
 
 func die():
 	face_mesh.mesh.text = "X|"

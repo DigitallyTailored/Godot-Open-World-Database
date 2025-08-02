@@ -311,7 +311,7 @@ func take_damage(damage: int, knockback_direction: Vector3 = Vector3.ZERO):
 			knockback_velocity = knockback_direction * actual_knockback_force
 		return
 	
-	Particle.setup(self, position, Color.RED)
+	Particle.setup(self, position, Color.YELLOW)
 	$sfx/hit.pitch_scale = randf_range(0.8,1.2)
 	$sfx/hit.play()
 	health -= actual_damage

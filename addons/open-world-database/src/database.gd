@@ -33,14 +33,14 @@ func save_database():
 	
 	# First, update all currently loaded nodes and handle size/position changes
 	var all_nodes = owdb.get_all_owd_nodes()
+	#print(all_nodes)
 	for node in all_nodes:
-		# Check for renames
-		owdb.handle_node_rename(node)
-		
 		var uid = node.get_meta("_owd_uid", "")
 		if uid == "":
 			continue
-			
+		# Check for renames
+		owdb.handle_node_rename(node)
+		
 		# Get old info for comparison
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})
 		
