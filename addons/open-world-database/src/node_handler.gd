@@ -79,7 +79,7 @@ func _handle_new_node(node: Node):
 		uid = new_uid
 	
 	# Defer the position-dependent operations to ensure transform is updated
-	owdb.call_deferred("_handle_new_node_positioning", node)
+	call_deferred("_handle_new_node_positioning", node)
 
 func _handle_new_node_positioning(node: Node):
 	if not is_instance_valid(node) or not node.is_inside_tree():

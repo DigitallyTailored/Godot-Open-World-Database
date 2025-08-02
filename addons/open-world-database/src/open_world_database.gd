@@ -192,12 +192,3 @@ func _check_node_removal(node):
 	
 	if is_instance_valid(node) and node.is_in_group("owdb"):
 		node.remove_from_group("owdb")
-
-# Call this when a new node is added to the database
-func _on_node_added_to_database(node_name: String):
-	if debug_enabled:
-		var total_nodes = get_total_database_nodes()
-		print("NODE ADDED TO DATABASE: ", node_name, " - ", total_nodes, " total database nodes")
-
-func _handle_new_node_positioning(node: Node):
-	node_handler._handle_new_node_positioning(node)
