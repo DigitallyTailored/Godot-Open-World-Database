@@ -1,11 +1,13 @@
 [gd_resource type="StandardMaterial3D" load_steps=2 format=3 uid="uid://b6glli2wgf2pp"]
 
-[ext_resource type="Texture2D" uid="uid://bir24jnsu46mo" path="res://addons/open-world-database/demo/resources/particles/star.png" id="1_hj4kt"]
+[ext_resource type="Texture2D" uid="uid://dmfgf6gs8udgw" path="res://addons/open-world-database/demo/resources/particles/nova.png" id="1_hj4kt"]
 
 [resource]
-transparency = 2
-alpha_scissor_threshold = 0.14
-alpha_antialiasing_mode = 0
+transparency = 1
 shading_mode = 0
 albedo_texture = ExtResource("1_hj4kt")
-uv1_triplanar = true
+disable_receive_shadows = true
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false

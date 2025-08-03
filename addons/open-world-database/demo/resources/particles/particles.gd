@@ -23,7 +23,7 @@ func setup(parent_node: Node, pos: Vector3, color: Color = Color.WHITE, amount :
 	# Don't add to scene here - let the static method handle parenting
 	global_position = pos
 	set_albedo_color(color)
-	particles.amount = amount
+	particles.amount = amount * 5
 	particles.one_shot = true
 	particles.emitting = true
 

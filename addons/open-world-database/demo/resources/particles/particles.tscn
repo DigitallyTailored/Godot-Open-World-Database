@@ -13,17 +13,16 @@ initial_velocity_max = 3.0
 gravity = Vector3(0, -5, 0)
 scale_max = 2.0
 
-[sub_resource type="SphereMesh" id="SphereMesh_cjjfd"]
+[sub_resource type="QuadMesh" id="QuadMesh_qmjhp"]
 material = ExtResource("2_qmjhp")
-radial_segments = 4
-rings = 1
+size = Vector2(0.25, 0.25)
 
 [node name="Particles" type="Node3D"]
 script = ExtResource("1_u1upb")
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="."]
 amount = 5
-lifetime = 5.0
+lifetime = 2.0
 explosiveness = 1.0
 process_material = SubResource("ParticleProcessMaterial_cjjfd")
-draw_pass_1 = SubResource("SphereMesh_cjjfd")
+draw_pass_1 = SubResource("QuadMesh_qmjhp")
