@@ -15,7 +15,7 @@ scale_max = 2.0
 
 [sub_resource type="QuadMesh" id="QuadMesh_qmjhp"]
 material = ExtResource("2_qmjhp")
-size = Vector2(0.25, 0.25)
+size = Vector2(0.5, 0.5)
 
 [node name="Particles" type="Node3D"]
 script = ExtResource("1_u1upb")

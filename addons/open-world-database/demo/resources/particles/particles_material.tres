@@ -5,7 +5,9 @@
 [resource]
 transparency = 1
 shading_mode = 0
+disable_ambient_light = true
 albedo_texture = ExtResource("1_hj4kt")
+texture_filter = 5
 disable_receive_shadows = true
 billboard_mode = 3
 particles_anim_h_frames = 1

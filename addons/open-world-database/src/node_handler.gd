@@ -14,7 +14,10 @@ func handle_child_entered_tree(node: Node):
 
 	if !owdb.is_ancestor_of(node):
 		return
-		
+	
+	#if the node.owner and owdb.owner are the same then we can manage this scene
+	print(node.name, " owner ", node.owner, " root: ", owdb.owner)
+	
 	if node.is_in_group("owdb_ignore"):
 		return
 	

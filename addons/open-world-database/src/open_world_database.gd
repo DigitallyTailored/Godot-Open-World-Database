@@ -47,7 +47,8 @@ func setup_listeners(node: Node):
 		node.child_exiting_tree.connect(_on_child_exiting_tree)
 
 func _on_child_entered_tree(node: Node):
-	node_handler.handle_child_entered_tree(node)
+	node_handler.call_deferred("handle_child_entered_tree", node)
+	#node_handler.handle_child_entered_tree(node)
 
 func _on_child_exiting_tree(node: Node):
 	node_handler.handle_child_exiting_tree(node)
