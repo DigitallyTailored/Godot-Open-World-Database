@@ -1,4 +1,3 @@
-#node_handler.gd
 @tool
 extends RefCounted
 class_name NodeHandler
@@ -9,40 +8,35 @@ func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
 
 func handle_child_entered_tree(node: Node):
-	if not (node is Node3D or node.get_class() == "Node"):
+	if not is_instance_valid(node) or not owdb.is_ancestor_of(node):
 		return
 
-	if !owdb.is_ancestor_of(node):
+	# Use owner check instead of groups - only manage nodes with matching owner
+	if node.owner != owdb.owner or node.has_meta("_owd_uid"):
 		return
-	
-	#if the node.owner and owdb.owner are the same then we can manage this scene
-	print(node.name, " owner ", node.owner, " root: ", owdb.owner)
-	
-	if node.is_in_group("owdb_ignore"):
+
+	if not (node is Node3D or node.get_class() == "Node"):
 		return
-	
-	for child in node.get_children():
-		if !child.is_in_group("owdb"):
-			child.add_to_group("owdb_ignore")
 	
 	owdb.call_deferred("setup_listeners", node)
 	
 	if owdb.is_loading:
-		node.add_to_group("owdb")
 		return
 	
-	if node.is_in_group("owdb"):
+	var existing_node = owdb.get_node_by_uid(node.name)
+	if existing_node and existing_node != node:
 		_handle_node_move(node)
 		return
 	
 	_handle_new_node(node)
 
 func handle_child_exiting_tree(node: Node):
-	if owdb.is_loading or !node.is_in_group("owdb"):
+	if owdb.is_loading or not node.has_meta("_owd_uid"):
 		return
 	
 	if is_instance_valid(node) and node.is_inside_tree() and node.has_meta("_owd_uid"):
-		owdb.call_deferred("_check_node_removal", node)
+		#owdb.call_deferred("_check_node_removal", node)
+		owdb._check_node_removal(node)
 
 func _handle_node_move(node: Node):
 	if owdb.debug_enabled:
@@ -59,8 +53,6 @@ func _handle_node_move(node: Node):
 		owdb.add_to_chunk_lookup(uid, node.global_position if node is Node3D else Vector3.ZERO, node_size)
 
 func _handle_new_node(node: Node):
-	node.add_to_group("owdb")
-	
 	if not node.has_meta("_owd_uid"):
 		var uid = node.name + '-' + NodeUtils.generate_uid()
 		node.set_meta("_owd_uid", uid)
@@ -131,5 +123,8 @@ func handle_node_rename(node: Node) -> bool:
 		var child_info = owdb.node_monitor.stored_nodes[child_uid]
 		if child_info.parent_uid == old_uid:
 			child_info.parent_uid = node.name
+	
+	# Update queues if present in batch processor
+	owdb.batch_processor.remove_from_queues(old_uid)
 	
 	return true

@@ -25,12 +25,40 @@ func get_database_path() -> String:
 		
 	return scene_path.get_basename() + ".owdb"
 
+func get_user_database_path(database_name: String) -> String:
+	"""Get path for a custom database in the user directory"""
+	if database_name == "":
+		return ""
+	
+	# Ensure the database name has the correct extension
+	var db_name = database_name
+	if not db_name.ends_with(".owdb"):
+		db_name += ".owdb"
+	
+	return "user://" + db_name
+
 func save_database():
 	var db_path = get_database_path()
 	if db_path == "":
 		print("Error: Scene must be saved before saving database")
 		return
 	
+	_save_database_to_path(db_path)
+
+func save_custom_database(database_name: String):
+	"""Save database with a custom name to user directory"""
+	var custom_path = get_user_database_path(database_name)
+	if custom_path == "":
+		print("Error: Invalid database name")
+		return
+	
+	_save_database_to_path(custom_path)
+	
+	if owdb.debug_enabled:
+		print("Custom database saved to: ", custom_path)
+
+func _save_database_to_path(db_path: String):
+	"""Internal method to save database to a specific path"""
 	# First, update all currently loaded nodes and handle size/position changes
 	for node in owdb.get_all_owd_nodes():
 		var uid = node.get_meta("_owd_uid", "")
@@ -52,7 +80,7 @@ func save_database():
 	
 	var file = FileAccess.open(db_path, FileAccess.WRITE)
 	if not file:
-		print("Error: Could not create database file")
+		print("Error: Could not create database file at: ", db_path)
 		return
 	
 	var top_level_uids = []
@@ -67,41 +95,33 @@ func save_database():
 	
 	file.close()
 	if owdb.debug_enabled:
-		print("Database saved successfully!")
-
-func _write_node_recursive(file: FileAccess, uid: String, depth: int):
-	var info = owdb.node_monitor.stored_nodes.get(uid, {})
-	if info.is_empty():
-		return
-	
-	var props_str = "{}" if info.properties.size() == 0 else JSON.stringify(info.properties)
-	
-	var line = "%s%s|\"%s\"|%s,%s,%s|%s,%s,%s|%s,%s,%s|%s|%s" % [
-		"\t".repeat(depth), uid, info.scene,
-		info.position.x, info.position.y, info.position.z,
-		info.rotation.x, info.rotation.y, info.rotation.z,
-		info.scale.x, info.scale.y, info.scale.z,
-		info.size, props_str
-	]
-	
-	file.store_line(line)
-	
-	var child_uids = []
-	for child_uid in owdb.node_monitor.stored_nodes:
-		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == uid:
-			child_uids.append(child_uid)
-	
-	child_uids.sort()
-	for child_uid in child_uids:
-		_write_node_recursive(file, child_uid, depth + 1)
+		print("Database saved successfully to: ", db_path)
 
 func load_database():
 	var db_path = get_database_path()
 	if db_path == "" or not FileAccess.file_exists(db_path):
 		return
 	
+	_load_database_from_path(db_path)
+
+func load_custom_database(database_name: String):
+	"""Load database with a custom name from user directory"""
+	var custom_path = get_user_database_path(database_name)
+	if custom_path == "" or not FileAccess.file_exists(custom_path):
+		if owdb.debug_enabled:
+			print("Custom database not found: ", custom_path)
+		return
+	
+	_load_database_from_path(custom_path)
+	
+	if owdb.debug_enabled:
+		print("Custom database loaded from: ", custom_path)
+
+func _load_database_from_path(db_path: String):
+	"""Internal method to load database from a specific path"""
 	var file = FileAccess.open(db_path, FileAccess.READ)
 	if not file:
+		print("Error: Could not open database: ", db_path)
 		return
 	
 	owdb.node_monitor.stored_nodes.clear()
@@ -138,7 +158,7 @@ func load_database():
 	
 	file.close()
 	if owdb.debug_enabled:
-		print("Database loaded successfully!")
+		print("Database loaded successfully from: ", db_path)
 
 func debug():
 	print("")
@@ -146,6 +166,32 @@ func debug():
 	print("")
 	print("Chunked nodes ", owdb.chunk_lookup)
 	print("")
+
+func _write_node_recursive(file: FileAccess, uid: String, depth: int):
+	var info = owdb.node_monitor.stored_nodes.get(uid, {})
+	if info.is_empty():
+		return
+	
+	var props_str = "{}" if info.properties.size() == 0 else JSON.stringify(info.properties)
+	
+	var line = "%s%s|\"%s\"|%s,%s,%s|%s,%s,%s|%s,%s,%s|%s|%s" % [
+		"\t".repeat(depth), uid, info.scene,
+		info.position.x, info.position.y, info.position.z,
+		info.rotation.x, info.rotation.y, info.rotation.z,
+		info.scale.x, info.scale.y, info.scale.z,
+		info.size, props_str
+	]
+	
+	file.store_line(line)
+	
+	var child_uids = []
+	for child_uid in owdb.node_monitor.stored_nodes:
+		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == uid:
+			child_uids.append(child_uid)
+	
+	child_uids.sort()
+	for child_uid in child_uids:
+		_write_node_recursive(file, child_uid, depth + 1)
 
 func _parse_line(line: String) -> Dictionary:
 	var parts = line.split("|")

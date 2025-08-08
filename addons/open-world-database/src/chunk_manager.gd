@@ -1,11 +1,13 @@
-#chunk_manager.gd
 @tool
 extends RefCounted
 class_name ChunkManager
 
 var owdb: OpenWorldDatabase
 var loaded_chunks: Dictionary = {}
+var previous_required_chunks: Dictionary = {} # Track what chunks should have been loaded in previous frame
+var pending_chunk_operations: Dictionary = {} # chunk_key -> "load"/"unload"
 var last_camera_position: Vector3
+var batch_callback_registered: bool = false
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
@@ -14,11 +16,25 @@ func _init(open_world_database: OpenWorldDatabase):
 func reset():
 	for size in OpenWorldDatabase.Size.values():
 		loaded_chunks[size] = {}
+		previous_required_chunks[size] = {}
+	pending_chunk_operations.clear()
+	batch_callback_registered = false
 
 func is_chunk_loaded(size_cat: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> bool:
 	if size_cat == OpenWorldDatabase.Size.ALWAYS_LOADED:
 		return true
+	
+	var chunk_key = _get_chunk_key(size_cat, chunk_pos)
+	
+	# Check if there's a pending operation that would affect this
+	if pending_chunk_operations.has(chunk_key):
+		var pending_op = pending_chunk_operations[chunk_key]
+		return pending_op == "load"
+	
 	return loaded_chunks.has(size_cat) and loaded_chunks[size_cat].has(chunk_pos)
+
+func _get_chunk_key(size_cat: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> Vector3:
+	return Vector3(size_cat, chunk_pos.x, chunk_pos.y)
 
 func _get_camera() -> Node3D:
 	if Engine.is_editor_hint():
@@ -51,9 +67,8 @@ func _update_camera_chunks():
 	
 	_ensure_always_loaded_chunk()
 	
-	if last_camera_position.distance_to(current_pos) < owdb.chunk_sizes[OpenWorldDatabase.Size.SMALL] * 0.1:
-		return
-	
+	# Remove the early return - we want to process chunks even for small movements
+	# to ensure proper tracking of required chunks
 	last_camera_position = current_pos
 	
 	var sizes = OpenWorldDatabase.Size.values()
@@ -67,6 +82,31 @@ func _update_camera_chunks():
 			continue
 		
 		_update_chunks_for_size(size, current_pos)
+	
+	# Register callback to update chunk states when batch processing completes
+	if not batch_callback_registered:
+		owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
+		batch_callback_registered = true
+
+func _on_batch_complete():
+	# Update actual chunk states after operations complete
+	for chunk_key in pending_chunk_operations:
+		var size = int(chunk_key.x)
+		var chunk_pos = Vector2i(chunk_key.y, chunk_key.z)
+		var operation = pending_chunk_operations[chunk_key]
+		
+		if operation == "unload":
+			if loaded_chunks.has(size):
+				loaded_chunks[size].erase(chunk_pos)
+		elif operation == "load":
+			if not loaded_chunks.has(size):
+				loaded_chunks[size] = {}
+			loaded_chunks[size][chunk_pos] = true
+	
+	pending_chunk_operations.clear()
+	
+	if owdb.debug_enabled:
+		print("Chunk states updated after batch completion")
 
 func _update_chunks_for_size(size: OpenWorldDatabase.Size, camera_pos: Vector3):
 	var chunk_size = owdb.chunk_sizes[size]
@@ -75,39 +115,61 @@ func _update_chunks_for_size(size: OpenWorldDatabase.Size, camera_pos: Vector3):
 		int(camera_pos.z / chunk_size)
 	)
 	
-	var new_chunks = {}
+	# Calculate what chunks should be loaded now
+	var new_required_chunks = {}
 	for x in range(-owdb.chunk_load_range, owdb.chunk_load_range + 1):
 		for z in range(-owdb.chunk_load_range, owdb.chunk_load_range + 1):
 			var chunk_pos = center_chunk + Vector2i(x, z)
-			new_chunks[chunk_pos] = true
+			new_required_chunks[chunk_pos] = true
 	
+	# Get the previous set of required chunks (what should have been loaded before)
+	var prev_required_chunks = previous_required_chunks[size]
+	
+	# Determine chunks to unload: were required before but not required now
 	var chunks_to_unload = []
-	var loaded_chunks_size = loaded_chunks[size]
-	for chunk_pos in loaded_chunks_size:
-		if not new_chunks.has(chunk_pos):
+	for chunk_pos in prev_required_chunks:
+		if not new_required_chunks.has(chunk_pos):
 			chunks_to_unload.append(chunk_pos)
 	
-	var additional_nodes_to_unload = _validate_nodes_in_chunks(size, chunks_to_unload, new_chunks)
+	# Determine chunks to load: required now but weren't required before
+	var chunks_to_load = []
+	for chunk_pos in new_required_chunks:
+		if not prev_required_chunks.has(chunk_pos):
+			chunks_to_load.append(chunk_pos)
 	
-	# Unload chunks (prevent chunk replacement by validating before unloading)
-	#if !owdb.is_loading and chunks_to_unload.size() < loaded_chunks_size.size() / 2:  # Safety check
-	#	print("WARNING: Unloading more than half the loaded chunks quantity - did you just teleport?? ", size)
+	# Validate nodes in chunks that are being unloaded
+	var additional_nodes_to_unload = _validate_nodes_in_chunks(size, chunks_to_unload, new_required_chunks)
+	
+	# Queue chunk operations (don't update loaded_chunks immediately)
 	for chunk_pos in chunks_to_unload:
-		_unload_chunk(size, chunk_pos)
+		_queue_unload_chunk(size, chunk_pos)
 	_unload_additional_nodes(additional_nodes_to_unload)
 	
-	# Load new chunks
-	for chunk_pos in new_chunks:
-		if not loaded_chunks_size.has(chunk_pos):
-			_load_chunk(size, chunk_pos)
+	# Load new chunks that are now needed
+	for chunk_pos in chunks_to_load:
+		_queue_load_chunk(size, chunk_pos)
 	
-	loaded_chunks[size] = new_chunks
+	# Update the previous required chunks for next frame
+	previous_required_chunks[size] = new_required_chunks
+
+func _queue_load_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
+	var chunk_key = _get_chunk_key(size, chunk_pos)
+	pending_chunk_operations[chunk_key] = "load"
+	_load_chunk(size, chunk_pos)
+
+func _queue_unload_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
+	var chunk_key = _get_chunk_key(size, chunk_pos)
+	pending_chunk_operations[chunk_key] = "unload"
+	_unload_chunk(size, chunk_pos)
 
 func _ensure_always_loaded_chunk():
 	var always_loaded_chunk = Vector2i(0, 0)
 	if not loaded_chunks[OpenWorldDatabase.Size.ALWAYS_LOADED].has(always_loaded_chunk):
 		_load_chunk(OpenWorldDatabase.Size.ALWAYS_LOADED, always_loaded_chunk)
 		loaded_chunks[OpenWorldDatabase.Size.ALWAYS_LOADED][always_loaded_chunk] = true
+	
+	# Also ensure it's in the previous required chunks
+	previous_required_chunks[OpenWorldDatabase.Size.ALWAYS_LOADED][always_loaded_chunk] = true
 
 func _validate_nodes_in_chunks(size_cat: OpenWorldDatabase.Size, chunks_to_check: Array, currently_loading_chunks: Dictionary) -> Array:
 	var additional_nodes_to_unload = []
@@ -152,6 +214,15 @@ func _is_chunk_loaded_or_loading(size_cat: OpenWorldDatabase.Size, chunk_pos: Ve
 		return true
 	if loaded_chunks.has(size_cat) and loaded_chunks[size_cat].has(chunk_pos):
 		return true
+	# Also check if it will be required in the new frame
+	if previous_required_chunks.has(size_cat) and previous_required_chunks[size_cat].has(chunk_pos):
+		return true
+	
+	# Check pending operations
+	var chunk_key = _get_chunk_key(size_cat, chunk_pos)
+	if pending_chunk_operations.has(chunk_key):
+		return pending_chunk_operations[chunk_key] == "load"
+	
 	return false
 
 func _move_node_hierarchy_to_chunks(node: Node):
@@ -178,9 +249,11 @@ func _unload_additional_nodes(nodes_to_unload: Array):
 	
 	owdb.is_loading = true
 	
+	# Mark all nodes as being legitimately unloaded
 	for node in all_nodes_to_unload:
-		if is_instance_valid(node):
-			owdb.handle_node_rename(node)
+		if is_instance_valid(node) and node.has_meta("_owd_uid"):
+			var uid = node.get_meta("_owd_uid")
+			owdb.nodes_being_unloaded[uid] = true
 			owdb.node_monitor.update_stored_node(node)
 	
 	for node in nodes_to_unload:
@@ -201,54 +274,10 @@ func _load_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
 	if not owdb.chunk_lookup.has(size) or not owdb.chunk_lookup[size].has(chunk_pos):
 		return
 	
-	owdb.is_loading = true
+	var node_uids = owdb.chunk_lookup[size][chunk_pos].duplicate()
 	
-	var node_infos = owdb.node_monitor.get_nodes_for_chunk(size, chunk_pos)
-	
-	for info in node_infos:
-		_load_node(info)
-	
-	owdb.is_loading = false
-
-func _load_node(node_info: Dictionary):
-	var instance: Node
-	
-	if node_info.scene.begins_with("res://"):
-		var scene = load(node_info.scene)
-		instance = scene.instantiate()
-	else:
-		instance = ClassDB.instantiate(node_info.scene)
-		if not instance:
-			print("Failed to create node of type: ", node_info.scene)
-			return
-	
-	instance.set_meta("_owd_uid", node_info.uid)
-	instance.name = node_info.uid
-	
-	var parent_node = null
-	if node_info.parent_uid != "":
-		parent_node = owdb.get_node_by_uid(node_info.parent_uid)
-	
-	for prop_name in node_info.properties:
-		if prop_name not in ["position", "rotation", "scale", "size"]:
-			if instance.has_method("set") and prop_name in instance:
-				var stored_value = node_info.properties[prop_name]
-				var current_value = instance.get(prop_name)
-				var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
-				instance.set(prop_name, converted_value)
-	
-	if parent_node:
-		parent_node.add_child(instance)
-		owdb._on_child_entered_tree(instance)
-	else:
-		owdb.add_child(instance)
-	
-	instance.owner = owdb.get_tree().get_edited_scene_root()
-	
-	if instance is Node3D:
-		instance.global_position = node_info.position
-		instance.global_rotation = node_info.rotation
-		instance.scale = node_info.scale
+	for uid in node_uids:
+		owdb.load_node(uid)  # Use batched loading
 
 func _unload_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
 	if size == OpenWorldDatabase.Size.ALWAYS_LOADED:
@@ -258,28 +287,6 @@ func _unload_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i):
 		return
 	
 	var uids_to_unload = owdb.chunk_lookup[size][chunk_pos].duplicate()
-	var nodes_to_unload = []
 	
 	for uid in uids_to_unload:
-		var node = owdb.get_node_by_uid(uid)
-		if node:
-			nodes_to_unload.append(node)
-	
-	var all_nodes_to_unload = []
-	for node in nodes_to_unload:
-		_collect_node_hierarchy(node, all_nodes_to_unload)
-	
-	owdb.is_loading = true
-	
-	for node in all_nodes_to_unload:
-		if is_instance_valid(node):
-			owdb.handle_node_rename(node)
-			owdb.node_monitor.update_stored_node(node)
-	
-	for node in nodes_to_unload:
-		if is_instance_valid(node):
-			if owdb.debug_enabled:
-				print("NODE REMOVED: ", node.name, " - ", owdb.get_total_database_nodes(), " total nodes")
-			node.free()
-	
-	owdb.is_loading = false
+		owdb.unload_node(uid)  # Use batched unloading
