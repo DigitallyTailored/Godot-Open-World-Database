@@ -19,7 +19,6 @@ func _ready():
 		timer.start()
 
 func setup(parent_node: Node, pos: Vector3, color: Color = Color.WHITE, amount :int= 5):
-	"""Setup the particle effect with position and color"""
 	# Don't add to scene here - let the static method handle parenting
 	global_position = pos
 	set_albedo_color(color)
@@ -38,5 +37,4 @@ func set_albedo_color(color: Color):
 
 
 func _on_particles_finished():
-	"""Called when particles finish emitting"""
 	queue_free()

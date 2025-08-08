@@ -165,17 +165,7 @@ func update_batch_settings():
 	batch_processor.batch_processing_enabled = batch_processing_enabled
 	batch_processor.update_batch_settings()
 
-# Node removal methods (now optional - system will auto-detect)
-func remove_node_from_database(node: Node):
-	"""Explicitly remove a node from the database - call this before free() if you want to be explicit (optional)"""
-	if not node or not node.has_meta("_owd_uid"):
-		return
-	
-	var uid = node.get_meta("_owd_uid")
-	_remove_node_and_children_from_database(uid, node)
-
 func _remove_node_and_children_from_database(uid: String, node: Node = null):
-	"""Internal method to remove a node and its children from the database"""
 	if not node_monitor.stored_nodes.has(uid):
 		return
 	
@@ -204,7 +194,6 @@ func _remove_node_and_children_from_database(uid: String, node: Node = null):
 
 # Public save/load interface
 func load_database(database_name: String = ""):
-	"""Load database with optional custom name from user directory"""
 	if database_name == "":
 		# Use default behavior
 		database.load_database()
@@ -213,7 +202,6 @@ func load_database(database_name: String = ""):
 		database.load_custom_database(database_name)
 
 func save_database(database_name: String = ""):
-	"""Save database with optional custom name to user directory"""
 	if database_name == "":
 		# Use default behavior
 		database.save_database()
@@ -222,7 +210,6 @@ func save_database(database_name: String = ""):
 		database.save_custom_database(database_name)
 
 func list_custom_databases() -> Array[String]:
-	"""List all custom databases in the user directory"""
 	var databases = []
 	var dir = DirAccess.open("user://")
 	if dir:
@@ -236,7 +223,6 @@ func list_custom_databases() -> Array[String]:
 	return databases
 
 func delete_custom_database(database_name: String) -> bool:
-	"""Delete a custom database from user directory"""
 	var db_path = database.get_user_database_path(database_name)
 	if FileAccess.file_exists(db_path):
 		DirAccess.remove_absolute(db_path)
@@ -318,7 +304,6 @@ func _immediate_unload_node(uid: String):
 		print("NODE UNLOADED: ", uid)
 
 func _cleanup_unload_tracking(uid: String):
-	"""Clean up the tracking for nodes being unloaded"""
 	nodes_being_unloaded.erase(uid)
 
 func _process(_delta: float) -> void:

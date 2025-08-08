@@ -26,7 +26,6 @@ func get_database_path() -> String:
 	return scene_path.get_basename() + ".owdb"
 
 func get_user_database_path(database_name: String) -> String:
-	"""Get path for a custom database in the user directory"""
 	if database_name == "":
 		return ""
 	
@@ -46,7 +45,6 @@ func save_database():
 	_save_database_to_path(db_path)
 
 func save_custom_database(database_name: String):
-	"""Save database with a custom name to user directory"""
 	var custom_path = get_user_database_path(database_name)
 	if custom_path == "":
 		print("Error: Invalid database name")
@@ -58,7 +56,6 @@ func save_custom_database(database_name: String):
 		print("Custom database saved to: ", custom_path)
 
 func _save_database_to_path(db_path: String):
-	"""Internal method to save database to a specific path"""
 	# First, update all currently loaded nodes and handle size/position changes
 	for node in owdb.get_all_owd_nodes():
 		var uid = node.get_meta("_owd_uid", "")
@@ -105,7 +102,6 @@ func load_database():
 	_load_database_from_path(db_path)
 
 func load_custom_database(database_name: String):
-	"""Load database with a custom name from user directory"""
 	var custom_path = get_user_database_path(database_name)
 	if custom_path == "" or not FileAccess.file_exists(custom_path):
 		if owdb.debug_enabled:
@@ -118,7 +114,6 @@ func load_custom_database(database_name: String):
 		print("Custom database loaded from: ", custom_path)
 
 func _load_database_from_path(db_path: String):
-	"""Internal method to load database from a specific path"""
 	var file = FileAccess.open(db_path, FileAccess.READ)
 	if not file:
 		print("Error: Could not open database: ", db_path)

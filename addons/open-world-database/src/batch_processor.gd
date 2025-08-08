@@ -36,14 +36,12 @@ func reset():
 		batch_timer.stop()
 
 func _is_node_currently_loaded(uid: String) -> bool:
-	"""Check if a node with the given UID is currently loaded in the scene"""
 	for node in owdb.get_all_owd_nodes():
 		if node.has_meta("_owd_uid") and node.get_meta("_owd_uid") == uid:
 			return true
 	return false
 
 func _remove_existing_operations(uid: String):
-	"""Remove all existing operations for the given UID"""
 	for i in range(operation_queue.size() - 1, -1, -1):
 		if operation_queue[i].uid == uid:
 			operation_queue.remove_at(i)
@@ -137,7 +135,6 @@ func clear_queues():
 		batch_timer.stop()
 
 func force_process_queues():
-	"""Process all queued operations immediately, ignoring time limits"""
 	var start_time = Time.get_ticks_msec()
 	var total_operations = operation_queue.size()
 	var actual_operations = 0
@@ -169,25 +166,20 @@ func force_process_queues():
 		print("Force processed ", actual_operations, "/", total_operations, " operations in ", time_taken, "ms")
 
 func update_batch_settings():
-	"""Call this after changing batch timing settings to update the timer"""
 	if batch_timer:
 		batch_timer.wait_time = batch_interval_ms / 1000.0
 
 func remove_from_queues(uid: String):
-	"""Remove all operations for a UID from the processing queue"""
 	_remove_existing_operations(uid)
 
 func add_batch_complete_callback(callback: Callable):
-	"""Add a callback to be called when batch processing completes"""
 	if not callback in batch_complete_callbacks:
 		batch_complete_callbacks.append(callback)
 
 func remove_batch_complete_callback(callback: Callable):
-	"""Remove a batch completion callback"""
 	batch_complete_callbacks.erase(callback)
 
 func get_queue_info() -> Dictionary:
-	"""Get information about current queue state"""
 	var load_count = 0
 	var unload_count = 0
 	
