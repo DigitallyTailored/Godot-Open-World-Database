@@ -11,9 +11,28 @@ func handle_child_entered_tree(node: Node):
 	if not is_instance_valid(node) or not owdb.is_ancestor_of(node):
 		return
 
-	if node.owner != owdb.owner or node.has_meta("_owd_uid"):
+	if node.owner != owdb.owner:
 		return
-
+		
+	if node.has_meta("_owd_uid"):
+		if owdb.is_loading:
+			return
+		else:
+			# Check for duplicate UIDs in loaded nodes - bypass if loading
+			var uid = node.get_meta("_owd_uid")
+			if owdb.loaded_nodes_by_uid.has(uid):
+				var existing_node = owdb.loaded_nodes_by_uid[uid]
+				if existing_node != node and is_instance_valid(existing_node):
+					# Duplicate UID found - generate new UID and treat as new node
+					var base_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
+					var new_uid = "%s%s%s" % [base_name, OpenWorldDatabase.UID_SEPARATOR, NodeUtils.generate_uid()]
+					node.set_meta("_owd_uid", new_uid)
+					node.name = new_uid
+					
+					if owdb.debug_enabled:
+						print("DUPLICATE UID DETECTED: ", uid, " -> ", new_uid)
+				# If existing_node is not valid anymore, we can continue with the current UID
+			
 	if not (node is Node3D or node.get_class() == "Node"):
 		return
 	
@@ -28,6 +47,7 @@ func handle_child_entered_tree(node: Node):
 		return
 	
 	_handle_new_node(node)
+
 
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:

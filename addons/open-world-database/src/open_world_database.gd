@@ -15,7 +15,7 @@ const SKIP_PROPERTIES = [
 	"script", "transform", "global_transform", "global_position", "global_rotation"
 ]
 
-@export var size_thresholds: Array[float] = [0.5, 2.0, 8.0]
+@export var size_thresholds: Array[float] = [1.0, 4.0, 16.0]
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
 @export var chunk_load_range: int = 3
 @export var debug_enabled: bool = false
@@ -131,7 +131,7 @@ func update_batch_settings():
 	batch_processor.batch_processing_enabled = batch_processing_enabled
 	batch_processor.update_batch_settings()
 
-func _remove_node_and_children_from_database(uid: String, node: Node = null):
+func _remove_node_and_children_from_database(uid: String, node = null):
 	if not node_monitor.stored_nodes.has(uid):
 		return
 	
@@ -307,6 +307,22 @@ func _check_node_removal(node):
 		return
 	
 	if node_monitor.stored_nodes.has(uid):
+		# Defer the actual removal check to see if node is still in tree
+		call_deferred("_deferred_check_node_removal", node, uid)
+
+func _deferred_check_node_removal(node, uid: String):
+	# Double-check that the node is still valid and the conditions haven't changed
+	if is_loading:
+		return
+	
+	# If node is still in the tree, it was just moved - don't remove from database
+	if node and node.is_inside_tree():
+		if debug_enabled:
+			print("NODE MOVED (still in tree): ", uid)
+		return
+	
+	# If we get here, the node was actually removed/freed
+	if node_monitor.stored_nodes.has(uid) and not nodes_being_unloaded.has(uid):
 		_remove_node_and_children_from_database(uid, node)
 		
 		if debug_enabled:
