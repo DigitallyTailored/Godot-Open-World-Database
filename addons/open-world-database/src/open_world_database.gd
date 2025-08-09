@@ -139,6 +139,7 @@ func _remove_node_and_children_from_database(uid: String, node: Node = null):
 	
 	remove_from_chunk_lookup(uid, node_info.position, node_info.size)
 	node_monitor.stored_nodes.erase(uid)
+	loaded_nodes_by_uid.erase(uid)  # ← ADD THIS LINE
 	batch_processor.remove_from_queues(uid)
 	
 	if debug_enabled:

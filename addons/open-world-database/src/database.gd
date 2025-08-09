@@ -80,8 +80,17 @@ func delete_custom_database(database_name: String) -> bool:
 
 func _save_database_to_path(db_path: String):
 	# Update all currently loaded nodes and handle size/position changes
-	for uid in owdb.loaded_nodes_by_uid:
+	# BUT only if they still exist in stored_nodes (haven't been deleted)
+	for uid in owdb.loaded_nodes_by_uid.keys():  # Use keys() to avoid modification during iteration
+		if not owdb.node_monitor.stored_nodes.has(uid):
+			continue  # Skip nodes that have been removed from database
+			
 		var node = owdb.loaded_nodes_by_uid[uid]
+		if not is_instance_valid(node):
+			# Clean up invalid node references
+			owdb.loaded_nodes_by_uid.erase(uid)
+			continue
+			
 		owdb.node_handler.handle_node_rename(node)
 		
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})

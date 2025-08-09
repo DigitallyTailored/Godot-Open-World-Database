@@ -300,13 +300,6 @@ metadata/_owd_uid = "Gem2-1753847046464_7699"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 0.6
 
-[node name="Gem-1754710178514_9348" type="Area3D" parent="OpenWorldDatabase/Gems" instance=ExtResource("8_7s5s1")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27.6714, 2.3826, -2.51844)
-script = ExtResource("9_m33ww")
-metadata/_owd_uid = "Gem-1754710178514_9348"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.6
-
 [node name="Gem3-1753847046465_7340" type="Area3D" parent="OpenWorldDatabase/Gems" instance=ExtResource("8_7s5s1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.5202, 2.85502, 6.62182)
 script = ExtResource("9_m33ww")
