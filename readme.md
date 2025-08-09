@@ -1,79 +1,192 @@
 # Open World Database (OWDB) for Godot
 
-A Godot addon that enables efficient streaming and persistence of large 3D open worlds through automatic chunk-based loading and hierarchical scene management.
+A Godot addon that brings efficient world streaming to your indie game, inspired by the massive open worlds of modern RPGs and adventure games. No more choosing between "small interesting world" and "performance nightmare" - now you can have both.
 
-## Overview
+## The Problem: When Worlds Get Too Big
 
-Creating large open worlds in Godot can quickly become a performance nightmare. With hundreds or thousands of nodes scattered across your map - NPCs, buildings, props, AI entities - your scene can grind to a halt as memory usage explodes and the engine struggles to process everything simultaneously.
+Large, detailed open worlds are incredible to explore, but they present a significant technical challenge. Those expansive landscapes that feel infinite are actually cleverly managed behind the scenes.
 
-**Open World Database** solves this by automatically managing your world content through intelligent chunking and streaming. Simply drop your scene nodes under the main OWDB node, and the system handles the rest - no complex setup, no workflow changes, just seamless integration with Godot's existing editor structure.
+In Godot, dropping thousands of objects, AI agents, physics bodies, or nodes into a single scene will severely impact performance. Traditional solutions involve custom LOD systems or splitting your world into separate scenes - all of which break your creative flow and make iteration painful.
+
+**OWDB changes that.**
+
+## The Solution: Smart World Streaming
+
+Open World Database automatically transforms your sprawling world through intelligent chunk-based streaming.
+
+Simply parent your world content to an OWDB node, and the system handles the rest:
+- **Batch Processing**: Smooth loading with configurable time limits (no more frame drops)
+- **Intelligent Chunking**: Different strategies for different content types
+- **Persistent Worlds**: Your world state survives restarts
+- **Zero Workflow Disruption**: Works exactly like normal Godot scenes
+- **Memory Efficient**: Only loads what players are close to relative to each item's size
 
 ## Key Features
 
-- **Automatic Chunk Management**: Dynamically loads/unloads content based on camera position
-- **Size-Based Optimization**: Different chunk sizes for different object categories (small props use fine-grained chunks, large buildings use bigger chunks)
-- **Seamless Editor Integration**: Works directly with Godot's scene system - just parent nodes to the OWDB node
-- **Persistent World State**: Automatically saves world data to `.owdb` files alongside your scenes
-- **Hierarchical Preservation**: Maintains parent-child relationships across chunk boundaries
-- **Custom Property Support**: Preserves all node properties and metadata during streaming
-- **Memory Efficient**: Only keeps nearby content in memory, dramatically reducing resource usage
+### Batch Processing System
+Gone are the hitches and stutters! The new batch processing system loads/unloads content over multiple frames:
+- Configurable time budgets (default: 5ms per frame)
+- Smart operation queuing prevents redundant work
+- Smooth performance even with hundreds of objects
+
+### Size-Based Intelligence
+Automatic distance-based management system for entire objects:
+- **Tiny Props** (small items, decorations): Ultra-fine 8×8m chunks (default)
+- **Medium Objects** (characters, furniture): 16×16m chunks (default)
+- **Large Structures** (buildings, vehicles): 64×64m chunks (default)
+- **Massive Elements** (terrain features, major structures): Always loaded
+
+### O(1) Performance
+- Lightning-fast node lookups (no more searching entire trees)
+- Cached loaded nodes for instant access
+- Optimized chunk operations
+
+### Advanced Database Features
+- **Multiple Save States**: Test different world configurations
+- **Custom Databases**: Save to user directory to keep user gameplay progress
+
+### Developer-Friendly
+- **Editor Integration**: Works seamlessly with Godot's scene system
+- **Property Preservation**: All your custom exports and properties survives streaming
+- **Live Debug Info**: See exactly what's happening in real-time
 
 ## Installation
 
-1. Download or clone this repository
-2. Copy the `addons/open_world_database` folder to your project's `addons/` directory
-3. Enable the plugin in Project Settings > Plugins
+1. **Download** the addon from the Godot Asset Library or GitHub
+2. **Extract** to your project's `addons/` folder
+3. **Enable** in Project Settings → Plugins → Open World Database
+4. **Ready!** Start building your world
 
-## Quick Start
+## Using OWDB: From Concept to Implementation
 
-1. Add an `OpenWorldDatabase` node to your scene
-2. Parent all your world content (NPCs, buildings, props, etc.) under this node
-3. The system automatically assigns unique IDs and begins tracking your content
-4. Save your scene - the addon creates a `.owdb` file with all world data
-5. During gameplay, content streams in and out based on camera position
+### In the Editor
 
+**Step 1: Set Up Your World**
 ```gdscript
-# Optional: Set a custom camera for chunk loading
-$OpenWorldDatabase.camera = $Player/Camera3D
-
-# Optional: Adjust chunk loading range
-$OpenWorldDatabase.chunk_load_range = 5  # Load 5 chunks in each direction
+# Create your scene structure like this:
+Main Scene
+└── OpenWorldDatabase
+	├── Town
+	│   ├── Shop Buildings (with interiors, NPCs)
+	│   ├── Public Areas (with furniture, decorations)
+	│   └── Guard Patrols (moving NPCs)
+	├── Wilderness
+	│   ├── Outpost Areas
+	│   ├── Points of Interest
+	│   └── Wildlife Spawns
+	└── Important Landmarks
 ```
 
-## How It Works
+**Step 2: Configure Your World**
+```gdscript
+# In the inspector, tune these settings:
+@export var size_thresholds: Array[float] = [0.5, 2.0, 8.0]  # Size categories
+@export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]    # Chunk dimensions
+@export var chunk_load_range: int = 3                        # View distance
+@export var debug_enabled: bool = true                       # See the system work
+```
 
-The addon monitors all nodes with scene files under the OWDB node, categorizing them by size (defaults shown but these can all be changed):
-- **Small** (≤0.5 units): Fine-grained 8x8 unit chunks
-- **Medium** (≤2.0 units): 16x16 unit chunks  
-- **Large** (≤8.0 units): 64x64 unit chunks
-- **Huge** (>8.0 units): No chunking (always loaded)
+**Step 3: Batch Processing Configuration**
+```gdscript
+# Fine-tune performance settings
+@export var batch_time_limit_ms: float = 5.0    # Max time per frame
+@export var batch_interval_ms: float = 100.0    # Time between batches
+@export var batch_processing_enabled: bool = true
+```
 
-As your camera moves through the world, the system automatically:
-1. Unloads chunks that are too far away
-2. Loads new chunks coming into range
-3. Maintains proper hierarchical relationships
-4. Preserves all node properties and transformations
+**That's it!** Just parent your content and watch OWDB automatically:
+- Generate unique IDs for everything
+- Calculate object sizes and assign chunk categories
+- Create a `.owdb` database alongside your scene
+- Monitor for changes as you work
 
-## Configuration
+### In the Game
 
-The `OpenWorldDatabase` node exposes several configuration options:
+**Basic Setup:**
+```gdscript
+extends Node3D
 
-- `size_thresholds`: Boundaries for object size categories
-- `chunk_sizes`: Chunk dimensions for each size category
-- `chunk_load_range`: How many chunks to load around the camera
-- `debug_enabled`: Enable debug output
-- `camera`: Custom camera node (auto-detected if not set)
+@onready var world_db = $OpenWorldDatabase
+@onready var player = $Player
+
+func _ready():
+	# Point OWDB at your camera (auto-detects if you don't)
+	world_db.camera = player.get_node("Camera3D")
+	
+	# Optional: Load a specific world state
+	# world_db.load_database("custom_world_state")
+```
+
+**Advanced Usage:**
+```gdscript
+# Check what's happening (great for debugging)
+func debug_world_state():
+	var stats = world_db.batch_processor.get_queue_info()
+	print("Loading: ", stats.load_operations_queued, " objects")
+	print("Unloading: ", stats.unload_operations_queued, " objects")
+	print("Total in world: ", world_db.get_total_database_nodes())
+	print("Currently loaded: ", world_db.get_currently_loaded_nodes())
+
+# Save different world states (perfect for testing)
+func save_world_variation(name: String):
+	world_db.save_database(name)  # Saves to user://name.owdb
+
+# List all saved worlds
+func get_saved_worlds() -> Array[String]:
+	return world_db.list_custom_databases()
+```
+
+### Batch Processing Control
+```gdscript
+# Pause streaming during intense action
+world_db.batch_processor.batch_processing_enabled = false
+
+# Resume with custom settings
+world_db.batch_time_limit_ms = 2.0  # Tighter timing during combat
+world_db.update_batch_settings()
+world_db.batch_processor.batch_processing_enabled = true
+
+# Force immediate loading (use sparingly!)
+world_db.batch_processor.force_process_queues()
+```
+
+## Best Practices
+
+### Do's ✅
+- **Use hierarchical organization** - group related objects under parent nodes
+- **Test different chunk ranges** - find your performance sweet spot
+- **Save regularly** - OWDB auto-saves when you save the scene. It's easy to read text-based format works great with versioning software like Git
+- **Use meaningful node names** - you can rename any node with a simpler name such as 'Gems', 'Town', 'Items'
+
+### Don'ts ❌
+- **Don't nest OWDB nodes** (yet - this is planned!)
+- **Don't put UI elements** under OWDB - it's for world content only
 
 ## Roadmap
 
-- **Child OWDB Support**: Nested OWDB nodes for complex scenes (e.g., furniture within buildings that can be independently chunked)
-- **Async Loading**: Background loading to eliminate hitches
-- **Compression**: Optional compression for `.owdb` files
+- **Nested OWDB Support**: Buildings with detailed interiors that can be independently chunked
+- **Compression**: Smaller `.owdb` files for distribution and to hide spoilers
+- **Multiplayer Support**: Synchronized world streaming for online games
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests, report bugs, or suggest features.
+Found a bug? Have an idea? Want to improve the system?
 
-## Support
+We welcome contributions! This addon is built by a developer, for developers. Whether you're fixing typos or adding major features, every contribution makes OWDB better.
 
-If you encounter issues or have questions, please open an issue on the GitHub repository.
+**Ways to help:**
+- Report bugs with detailed reproduction steps
+- Suggest features (especially if you're building something interesting)
+- Submit pull requests (check the issues for good first contributions)
+- Improve documentation
+- Share your projects using OWDB (we love seeing what you create)
+
+## Games Using OWDB
+
+*Building something amazing? Let us know and we'll feature it here!*
+
+## License
+
+MIT License
+
+---
