@@ -49,6 +49,12 @@ func _process_batch():
 			continue # Operation was cancelled
 		
 		var operation = pending_operations[uid]
+		
+		# CRITICAL FIX: Validate operation is still needed based on current chunk state
+		if not _is_operation_still_valid(uid, operation.action):
+			pending_operations.erase(uid)
+			continue
+		
 		var is_loaded = owdb.loaded_nodes_by_uid.has(uid)
 		
 		if operation.action == "load" and not is_loaded:
@@ -79,12 +85,40 @@ func _process_batch():
 	
 	is_processing_batch = false
 
+# NEW: Validate if operation is still needed based on current chunk requirements
+func _is_operation_still_valid(uid: String, action: String) -> bool:
+	if not owdb.node_monitor.stored_nodes.has(uid):
+		return false  # Node doesn't exist in database
+	
+	var node_info = owdb.node_monitor.stored_nodes[uid]
+	var size_cat = owdb.get_size_category(node_info.size)
+	var chunk_pos = Vector2i(int(node_info.position.x / owdb.chunk_sizes[size_cat]), int(node_info.position.z / owdb.chunk_sizes[size_cat])) if size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
+	
+	var chunk_should_be_loaded = owdb.chunk_manager.is_chunk_loaded(size_cat, chunk_pos)
+	var is_currently_loaded = owdb.loaded_nodes_by_uid.has(uid)
+	
+	# Validate the operation makes sense given current chunk state
+	if action == "load":
+		return chunk_should_be_loaded and not is_currently_loaded
+	elif action == "unload":
+		return not chunk_should_be_loaded and is_currently_loaded
+	
+	return false
+
 func _queue_operation(uid: String, action: String):
+	# First validate the operation is needed
+	if not _is_operation_still_valid(uid, action):
+		return  # Don't queue operations that aren't needed
+	
 	# Remove existing operation if different action
 	if uid in pending_operations:
 		if pending_operations[uid].action != action:
 			operation_order.erase(uid)
 			operation_order.append(uid)
+		else:
+			# Same operation already queued, just update timestamp
+			pending_operations[uid].timestamp = Time.get_ticks_msec()
+			return
 	else:
 		operation_order.append(uid)
 	
@@ -98,18 +132,16 @@ func _queue_operation(uid: String, action: String):
 
 func load_node(uid: String):
 	if batch_processing_enabled:
-		if not owdb.loaded_nodes_by_uid.has(uid):
-			_queue_operation(uid, "load")
+		_queue_operation(uid, "load")
 	else:
-		if not owdb.loaded_nodes_by_uid.has(uid):
+		if _is_operation_still_valid(uid, "load"):
 			owdb._immediate_load_node(uid)
 
 func unload_node(uid: String):
 	if batch_processing_enabled:
-		if owdb.loaded_nodes_by_uid.has(uid):
-			_queue_operation(uid, "unload")
+		_queue_operation(uid, "unload")
 	else:
-		if owdb.loaded_nodes_by_uid.has(uid):
+		if _is_operation_still_valid(uid, "unload"):
 			owdb._immediate_unload_node(uid)
 
 func clear_queues():
@@ -130,6 +162,12 @@ func force_process_queues():
 			continue
 		
 		var operation = pending_operations[uid]
+		
+		# Validate operation is still needed
+		if not _is_operation_still_valid(uid, operation.action):
+			pending_operations.erase(uid)
+			continue
+		
 		var is_loaded = owdb.loaded_nodes_by_uid.has(uid)
 		
 		if operation.action == "load" and not is_loaded:
@@ -151,6 +189,22 @@ func force_process_queues():
 	if owdb.debug_enabled:
 		var time_taken = Time.get_ticks_msec() - start_time
 		print("Force processed ", actual_operations, "/", total_operations, " operations in ", time_taken, "ms")
+
+# NEW: Clean up invalid operations from queue
+func cleanup_invalid_operations():
+	var invalid_uids = []
+	
+	for uid in pending_operations:
+		var operation = pending_operations[uid]
+		if not _is_operation_still_valid(uid, operation.action):
+			invalid_uids.append(uid)
+	
+	for uid in invalid_uids:
+		pending_operations.erase(uid)
+		operation_order.erase(uid)
+	
+	if owdb.debug_enabled and invalid_uids.size() > 0:
+		print("Cleaned up ", invalid_uids.size(), " invalid operations from queue")
 
 func update_batch_settings():
 	if batch_timer:

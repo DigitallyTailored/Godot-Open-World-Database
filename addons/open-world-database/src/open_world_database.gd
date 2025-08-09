@@ -251,7 +251,7 @@ func debug():
 	print("=== OWDB DEBUG INFO ===")
 	print("Nodes currently loaded: ", get_currently_loaded_nodes())
 	print("Total nodes in database: ", get_total_database_nodes())
-	
+	"""
 	var queue_info = batch_processor.get_queue_info()
 	print("Operations queued: ", queue_info.total_queue_size)
 	print("Load operations: ", queue_info.load_operations_queued)
@@ -267,8 +267,8 @@ func debug():
 	print("\nCurrently loaded nodes:")
 	for uid in loaded_nodes_by_uid:
 		print("  - ", uid, " : ", loaded_nodes_by_uid[uid].name)
-	
 	database.debug()
+	"""
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():

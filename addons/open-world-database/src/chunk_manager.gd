@@ -60,9 +60,13 @@ func _update_camera_chunks():
 			continue
 		_update_chunks_for_size(size, current_pos)
 	
+	# NEW: Clean up any invalid operations after chunk updates
+	owdb.batch_processor.cleanup_invalid_operations()
+	
 	if not batch_callback_registered:
 		owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
 		batch_callback_registered = true
+
 
 func _on_batch_complete():
 	for chunk_key in pending_chunk_operations:
