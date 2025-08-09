@@ -9,19 +9,17 @@ var batch_time_limit_ms: float = 5.0
 var batch_interval_ms: float = 100.0
 var batch_processing_enabled: bool = true
 
-# Simple queue system
-var operation_queue: Array = []  # Array of {uid: String, action: String}
+# Optimized queue system using Dictionary for O(1) operations
+var pending_operations: Dictionary = {} # uid -> {action: String, timestamp: float}
+var operation_order: Array = [] # UIDs in processing order
 var batch_timer: Timer
 var is_processing_batch: bool = false
-
-# Callbacks for chunk manager
 var batch_complete_callbacks: Array[Callable] = []
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
 
 func setup():
-	# Create timer for batch processing
 	batch_timer = Timer.new()
 	owdb.add_child(batch_timer)
 	batch_timer.wait_time = batch_interval_ms / 1000.0
@@ -30,21 +28,11 @@ func setup():
 	batch_timer.one_shot = false
 
 func reset():
-	operation_queue.clear()
+	pending_operations.clear()
+	operation_order.clear()
 	batch_complete_callbacks.clear()
 	if batch_timer:
 		batch_timer.stop()
-
-func _is_node_currently_loaded(uid: String) -> bool:
-	for node in owdb.get_all_owd_nodes():
-		if node.has_meta("_owd_uid") and node.get_meta("_owd_uid") == uid:
-			return true
-	return false
-
-func _remove_existing_operations(uid: String):
-	for i in range(operation_queue.size() - 1, -1, -1):
-		if operation_queue[i].uid == uid:
-			operation_queue.remove_at(i)
 
 func _process_batch():
 	if is_processing_batch:
@@ -54,30 +42,30 @@ func _process_batch():
 	var start_time = Time.get_ticks_msec()
 	var operations_performed = 0
 	
-	# Process operations in order until time limit or queue is empty
-	while not operation_queue.is_empty():
-		var operation = operation_queue.pop_front()
+	while not operation_order.is_empty():
+		var uid = operation_order.pop_front()
 		
-		# Double-check if the operation is still needed
-		var is_loaded = _is_node_currently_loaded(operation.uid)
+		if not pending_operations.has(uid):
+			continue # Operation was cancelled
+		
+		var operation = pending_operations[uid]
+		var is_loaded = owdb.loaded_nodes_by_uid.has(uid)
 		
 		if operation.action == "load" and not is_loaded:
-			owdb._immediate_load_node(operation.uid)
+			owdb._immediate_load_node(uid)
 			operations_performed += 1
 		elif operation.action == "unload" and is_loaded:
-			owdb._immediate_unload_node(operation.uid)
+			owdb._immediate_unload_node(uid)
 			operations_performed += 1
-		# Skip operation if it's no longer needed
 		
-		# Check time limit
+		pending_operations.erase(uid)
+		
 		if Time.get_ticks_msec() - start_time >= batch_time_limit_ms:
 			break
 	
-	# Stop timer if queue is empty
-	if operation_queue.is_empty():
+	if operation_order.is_empty():
 		batch_timer.stop()
 		
-		# Call completion callbacks
 		for callback in batch_complete_callbacks:
 			if callback.is_valid():
 				callback.call()
@@ -87,76 +75,75 @@ func _process_batch():
 	
 	if owdb.debug_enabled and operations_performed > 0:
 		var time_taken = Time.get_ticks_msec() - start_time
-		print("Batch processed ", operations_performed, " operations in ", time_taken, "ms. Remaining: ", operation_queue.size())
+		print("Batch processed ", operations_performed, " operations in ", time_taken, "ms. Remaining: ", operation_order.size())
 	
 	is_processing_batch = false
 
-func _start_batch_processing_if_needed():
-	if batch_processing_enabled and not batch_timer.time_left > 0 and not operation_queue.is_empty():
+func _queue_operation(uid: String, action: String):
+	# Remove existing operation if different action
+	if uid in pending_operations:
+		if pending_operations[uid].action != action:
+			operation_order.erase(uid)
+			operation_order.append(uid)
+	else:
+		operation_order.append(uid)
+	
+	pending_operations[uid] = {
+		"action": action,
+		"timestamp": Time.get_ticks_msec()
+	}
+	
+	if batch_processing_enabled and not batch_timer.time_left > 0:
 		batch_timer.start()
-		if owdb.debug_enabled:
-			print("Started batch processing. Operations pending: ", operation_queue.size())
-
-func queue_load_node(uid: String):
-	# Remove any existing operations for this node
-	_remove_existing_operations(uid)
-	
-	# Only queue if the node is not already loaded
-	if not _is_node_currently_loaded(uid):
-		operation_queue.append({"uid": uid, "action": "load"})
-		_start_batch_processing_if_needed()
-
-func queue_unload_node(uid: String):
-	# Remove any existing operations for this node
-	_remove_existing_operations(uid)
-	
-	# Only queue if the node is currently loaded
-	if _is_node_currently_loaded(uid):
-		operation_queue.append({"uid": uid, "action": "unload"})
-		_start_batch_processing_if_needed()
 
 func load_node(uid: String):
 	if batch_processing_enabled:
-		queue_load_node(uid)
+		if not owdb.loaded_nodes_by_uid.has(uid):
+			_queue_operation(uid, "load")
 	else:
-		if not _is_node_currently_loaded(uid):
+		if not owdb.loaded_nodes_by_uid.has(uid):
 			owdb._immediate_load_node(uid)
 
 func unload_node(uid: String):
 	if batch_processing_enabled:
-		queue_unload_node(uid)
+		if owdb.loaded_nodes_by_uid.has(uid):
+			_queue_operation(uid, "unload")
 	else:
-		if _is_node_currently_loaded(uid):
+		if owdb.loaded_nodes_by_uid.has(uid):
 			owdb._immediate_unload_node(uid)
 
 func clear_queues():
-	operation_queue.clear()
+	pending_operations.clear()
+	operation_order.clear()
 	if batch_timer:
 		batch_timer.stop()
 
 func force_process_queues():
 	var start_time = Time.get_ticks_msec()
-	var total_operations = operation_queue.size()
+	var total_operations = operation_order.size()
 	var actual_operations = 0
 	
-	# Process all operations
-	while not operation_queue.is_empty():
-		var operation = operation_queue.pop_front()
+	while not operation_order.is_empty():
+		var uid = operation_order.pop_front()
 		
-		# Double-check if the operation is still needed
-		var is_loaded = _is_node_currently_loaded(operation.uid)
+		if not pending_operations.has(uid):
+			continue
+		
+		var operation = pending_operations[uid]
+		var is_loaded = owdb.loaded_nodes_by_uid.has(uid)
 		
 		if operation.action == "load" and not is_loaded:
-			owdb._immediate_load_node(operation.uid)
+			owdb._immediate_load_node(uid)
 			actual_operations += 1
 		elif operation.action == "unload" and is_loaded:
-			owdb._immediate_unload_node(operation.uid)
+			owdb._immediate_unload_node(uid)
 			actual_operations += 1
+		
+		pending_operations.erase(uid)
 	
 	if batch_timer:
 		batch_timer.stop()
 	
-	# Call completion callbacks
 	for callback in batch_complete_callbacks:
 		if callback.is_valid():
 			callback.call()
@@ -170,7 +157,9 @@ func update_batch_settings():
 		batch_timer.wait_time = batch_interval_ms / 1000.0
 
 func remove_from_queues(uid: String):
-	_remove_existing_operations(uid)
+	if uid in pending_operations:
+		pending_operations.erase(uid)
+		operation_order.erase(uid)
 
 func add_batch_complete_callback(callback: Callable):
 	if not callback in batch_complete_callbacks:
@@ -183,14 +172,14 @@ func get_queue_info() -> Dictionary:
 	var load_count = 0
 	var unload_count = 0
 	
-	for operation in operation_queue:
-		if operation.action == "load":
+	for uid in pending_operations:
+		if pending_operations[uid].action == "load":
 			load_count += 1
-		elif operation.action == "unload":
+		elif pending_operations[uid].action == "unload":
 			unload_count += 1
 	
 	return {
-		"total_queue_size": operation_queue.size(),
+		"total_queue_size": operation_order.size(),
 		"load_operations_queued": load_count,
 		"unload_operations_queued": unload_count,
 		"batch_processing_active": batch_timer.time_left > 0,

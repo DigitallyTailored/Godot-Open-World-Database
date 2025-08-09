@@ -1,4 +1,3 @@
-#node_monitor.gd
 @tool
 extends RefCounted
 class_name NodeMonitor
@@ -9,8 +8,9 @@ var baseline_values: Dictionary = {} # class_name -> {property_name -> default_v
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
-	
-	# Get baseline property values for all common node types
+	_initialize_baseline_values()
+
+func _initialize_baseline_values():
 	var node_types = [
 		Node.new(), Node3D.new(), Sprite3D.new(), MeshInstance3D.new(),
 		MultiMeshInstance3D.new(), GPUParticles3D.new(), CPUParticles3D.new(),
@@ -25,15 +25,15 @@ func _init(open_world_database: OpenWorldDatabase):
 		var class_name_ = node.get_class()
 		baseline_values[class_name_] = {}
 		
-		for prop in node.get_property_list():
-			if not prop.name.begins_with("_") and (prop.usage & PROPERTY_USAGE_STORAGE):
-				baseline_values[class_name_][prop.name] = node.get(prop.name)
+		for prop in NodeUtils.get_storable_properties(node):
+			baseline_values[class_name_][prop.name] = node.get(prop.name)
 		
 		node.free()
 
 func create_node_info(node: Node, force_recalculate_size: bool = false) -> Dictionary:
+	var uid = NodeUtils.get_valid_node_uid(node)
 	var info = {
-		"uid": node.get_meta("_owd_uid", ""),
+		"uid": uid,
 		"scene": _get_node_source(node),
 		"position": Vector3.ZERO,
 		"rotation": Vector3.ZERO,
@@ -52,46 +52,22 @@ func create_node_info(node: Node, force_recalculate_size: bool = false) -> Dicti
 	if parent and parent.has_meta("_owd_uid"):
 		info.parent_uid = parent.get_meta("_owd_uid")
 	
-	var baseline = baseline_values.get(node.get_class(), {})
-	
-	var skip_properties = [
-		"metadata/_owd_uid", "metadata/_owd_last_scale", "metadata/_owd_last_size",
-		"script", "transform", "global_transform", "global_position", "global_rotation"
-	]
-	
-	for prop in node.get_property_list():
-		if prop.name.begins_with("_") or not (prop.usage & PROPERTY_USAGE_STORAGE):
-			continue
-			
-		if prop.name in skip_properties:
-			continue
-		
-		var current_value = node.get(prop.name)
-		if not _values_equal(current_value, baseline.get(prop.name)):
-			info.properties[prop.name] = current_value
+	info.properties = _get_modified_properties(node)
 	
 	return info
 
-func _values_equal(a, b) -> bool:
-	if a == null and b == null:
-		return true
-	if a == null or b == null:
-		return false
+func _get_modified_properties(node: Node) -> Dictionary:
+	var baseline = baseline_values.get(node.get_class(), {})
+	var modified_properties = {}
 	
-	if a == b:
-		return true
+	for prop in NodeUtils.get_storable_properties(node):
+		var prop_name = prop.name
+		var current_value = node.get(prop_name)
+		
+		if not NodeUtils.values_equal(current_value, baseline.get(prop_name)):
+			modified_properties[prop_name] = current_value
 	
-	if a is float and b is float:
-		return abs(a - b) < 0.0001
-	
-	if a is Vector2 and b is Vector2:
-		return a.is_equal_approx(b)
-	if a is Vector3 and b is Vector3:
-		return a.is_equal_approx(b)
-	if a is Vector4 and b is Vector4:
-		return a.is_equal_approx(b)
-	
-	return false
+	return modified_properties
 
 func _get_node_source(node: Node) -> String:
 	if node.scene_file_path != "":
@@ -99,8 +75,8 @@ func _get_node_source(node: Node) -> String:
 	return node.get_class()
 
 func update_stored_node(node: Node, force_recalculate_size: bool = false):
-	var uid = node.get_meta("_owd_uid", "")
-	if uid:
+	var uid = NodeUtils.get_valid_node_uid(node)
+	if uid != "":
 		stored_nodes[uid] = create_node_info(node, force_recalculate_size)
 
 func store_node_hierarchy(node: Node):

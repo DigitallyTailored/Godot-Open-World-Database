@@ -1,9 +1,8 @@
-#utils/node_utils.gd
 @tool
 extends RefCounted
 class_name NodeUtils
 
-static func remove_children(node:Node):
+static func remove_children(node: Node):
 	var children = node.get_children()
 	for child in children:
 		child.free()
@@ -11,7 +10,12 @@ static func remove_children(node:Node):
 static func generate_uid() -> String:
 	var rng = RandomNumberGenerator.new()
 	rng.randomize()
-	return str(Time.get_unix_time_from_system()).replace(".", "")+ "_" + str(rng.randi_range(1000,9999))
+	return str(Time.get_unix_time_from_system()).replace(".", "") + "_" + str(rng.randi_range(1000, 9999))
+
+static func get_valid_node_uid(node: Node) -> String:
+	if not is_instance_valid(node) or not node.has_meta("_owd_uid"):
+		return ""
+	return node.get_meta("_owd_uid", "")
 
 static func get_node_aabb(node: Node, exclude_top_level_transform: bool = true) -> AABB:
 	var bounds: AABB = AABB()
@@ -32,110 +36,145 @@ static func get_node_aabb(node: Node, exclude_top_level_transform: bool = true) 
 	return bounds
 
 static func calculate_node_size(node: Node, force_recalculate: bool = false) -> float:
-	# Non-3D nodes have no size
 	if not node is Node3D:
 		return 0.0
 	
 	var node_3d = node as Node3D
 	
-	# Check if we have cached values (unless forcing recalculation)
 	if not force_recalculate and node_3d.has_meta("_owd_last_scale"):
-		# If scale hasn't changed, return cached size
 		var meta = node_3d.get_meta("_owd_last_scale")
 		if node_3d.scale == meta:
 			return node_3d.get_meta("_owd_last_size")
 	
-	# Calculate new size
 	var aabb = get_node_aabb(node_3d, false)
 	var size = aabb.size
 	var max_size = max(size.x, max(size.y, size.z))
 	
-	# Cache the scale and size
 	node_3d.set_meta("_owd_last_scale", node_3d.scale)
 	node_3d.set_meta("_owd_last_size", max_size)
 	
 	return max_size
 
-static func is_top_level_node(node: Node) -> bool:
-	var parent_node = node.get_parent()
-	return not (parent_node and parent_node.has_meta("_owd_uid"))
+static func get_storable_properties(node: Node) -> Array:
+	return node.get_property_list().filter(func(prop): 
+		return not prop.name.begins_with("_") and (prop.usage & PROPERTY_USAGE_STORAGE) and not prop.name in OpenWorldDatabase.SKIP_PROPERTIES
+	)
+
+static func values_equal(a, b) -> bool:
+	if a == null and b == null:
+		return true
+	if a == null or b == null:
+		return false
+	
+	if a == b:
+		return true
+	
+	if a is float and b is float:
+		return abs(a - b) < 0.0001
+	
+	if a is Vector2 and b is Vector2:
+		return a.is_equal_approx(b)
+	if a is Vector3 and b is Vector3:
+		return a.is_equal_approx(b)
+	if a is Vector4 and b is Vector4:
+		return a.is_equal_approx(b)
+	
+	return false
 
 static func convert_property_value(stored_value: Variant, current_value: Variant) -> Variant:
-	# If it's not a string, return as-is (already correct type)
 	if typeof(stored_value) != TYPE_STRING:
 		return stored_value
 	
 	var str_val = stored_value as String
 	
-	# Handle Color - most common case
 	if current_value is Color:
-		return _parse_color_fast(str_val)
-	
-	# Handle Vectors
-	if current_value is Vector2:
-		return _parse_vector2_fast(str_val)
+		return parse_color(str_val)
+	elif current_value is Vector2:
+		return parse_vector2(str_val)
 	elif current_value is Vector3:
-		return _parse_vector3_fast(str_val)
+		return parse_vector3(str_val)  
 	elif current_value is Vector4:
-		return _parse_vector4_fast(str_val)
+		return parse_vector4(str_val)
 	
-	# For everything else, return the stored value as-is
 	return stored_value
 
-static func _parse_color_fast(str_val: String) -> Color:
-	# Fast parsing for "(r, g, b, a)" format
-	if str_val.length() < 7:  # Minimum: "(0,0,0)"
-		return Color.WHITE
-	
-	var start = 1 if str_val[0] == '(' else 0
-	var end = str_val.length() - 1 if str_val[-1] == ')' else str_val.length()
+# Consolidated vector parsing
+static func parse_vector_components(str_val: String, component_count: int) -> Array:
+	var start = 1 if str_val.length() > 0 and str_val[0] == '(' else 0
+	var end = str_val.length() - 1 if str_val.length() > 0 and str_val[-1] == ')' else str_val.length()
 	var inner = str_val.substr(start, end - start)
 	var parts = inner.split(",")
 	
-	if parts.size() >= 3:
-		var r = parts[0].strip_edges().to_float()
-		var g = parts[1].strip_edges().to_float()
-		var b = parts[2].strip_edges().to_float()
-		var a = 1.0 if parts.size() < 4 else parts[3].strip_edges().to_float()
-		return Color(r, g, b, a)
-	
+	var components = []
+	for i in component_count:
+		if i < parts.size():
+			components.append(parts[i].strip_edges().to_float())
+		else:
+			components.append(0.0)
+	return components
+
+static func parse_vector2(str_val: String) -> Vector2:
+	var components = parse_vector_components(str_val, 2)
+	return Vector2(components[0], components[1])
+
+static func parse_vector3(str_val: String) -> Vector3:
+	var components = parse_vector_components(str_val, 3)
+	return Vector3(components[0], components[1], components[2])
+
+static func parse_vector4(str_val: String) -> Vector4:
+	var components = parse_vector_components(str_val, 4)
+	return Vector4(components[0], components[1], components[2], components[3])
+
+static func parse_color(str_val: String) -> Color:
+	var components = parse_vector_components(str_val, 4)
+	if components.size() >= 3:
+		var a = 1.0 if components.size() < 4 else components[3]
+		return Color(components[0], components[1], components[2], a)
 	return Color.WHITE
 
-static func _parse_vector2_fast(str_val: String) -> Vector2:
-	var start = 1 if str_val[0] == '(' else 0
-	var end = str_val.length() - 1 if str_val[-1] == ')' else str_val.length()
-	var inner = str_val.substr(start, end - start)
-	var parts = inner.split(",")
+# Tree traversal utilities
+static func collect_node_hierarchy(node: Node, collection: Array):
+	if node.has_meta("_owd_uid"):
+		collection.append(node)
 	
-	if parts.size() >= 2:
-		return Vector2(parts[0].strip_edges().to_float(), parts[1].strip_edges().to_float())
-	return Vector2.ZERO
+	for child in node.get_children():
+		if child.has_meta("_owd_uid"):
+			collect_node_hierarchy(child, collection)
 
-static func _parse_vector3_fast(str_val: String) -> Vector3:
-	var start = 1 if str_val[0] == '(' else 0
-	var end = str_val.length() - 1 if str_val[-1] == ')' else str_val.length()
-	var inner = str_val.substr(start, end - start)
-	var parts = inner.split(",")
+static func move_node_hierarchy_to_chunks(node: Node, owdb: OpenWorldDatabase):
+	if node.has_meta("_owd_uid"):
+		var uid = node.get_meta("_owd_uid")
+		var node_size = calculate_node_size(node)
+		var node_position = node.global_position if node is Node3D else Vector3.ZERO
+		
+		owdb.node_monitor.update_stored_node(node)
+		owdb.add_to_chunk_lookup(uid, node_position, node_size)
 	
-	if parts.size() >= 3:
-		return Vector3(
-			parts[0].strip_edges().to_float(),
-			parts[1].strip_edges().to_float(),
-			parts[2].strip_edges().to_float()
-		)
-	return Vector3.ZERO
+	for child in node.get_children():
+		if child.has_meta("_owd_uid"):
+			move_node_hierarchy_to_chunks(child, owdb)
 
-static func _parse_vector4_fast(str_val: String) -> Vector4:
-	var start = 1 if str_val[0] == '(' else 0
-	var end = str_val.length() - 1 if str_val[-1] == ')' else str_val.length()
-	var inner = str_val.substr(start, end - start)
-	var parts = inner.split(",")
+static func find_visible_camera(node: Node) -> Camera3D:
+	if node is Camera3D and node.visible:
+		return node
 	
-	if parts.size() >= 4:
-		return Vector4(
-			parts[0].strip_edges().to_float(),
-			parts[1].strip_edges().to_float(),
-			parts[2].strip_edges().to_float(),
-			parts[3].strip_edges().to_float()
-		)
-	return Vector4.ZERO
+	for child in node.get_children():
+		var found = find_visible_camera(child)
+		if found:
+			return found
+	return null
+
+# Utility functions for common operations
+static func update_chunk_lookup_uid(chunk_lookup: Dictionary, old_uid: String, new_uid: String):
+	for size in chunk_lookup:
+		for chunk_pos in chunk_lookup[size]:
+			var uid_list = chunk_lookup[size][chunk_pos]
+			var old_index = uid_list.find(old_uid)
+			if old_index >= 0:
+				uid_list[old_index] = new_uid
+
+static func update_parent_references(stored_nodes: Dictionary, old_uid: String, new_uid: String):
+	for child_uid in stored_nodes:
+		var child_info = stored_nodes[child_uid]
+		if child_info.parent_uid == old_uid:
+			child_info.parent_uid = new_uid

@@ -1,4 +1,3 @@
-#database.gd
 @tool
 extends RefCounted
 class_name Database
@@ -23,46 +22,67 @@ func get_database_path() -> String:
 	if scene_path == "":
 		return ""
 		
-	return scene_path.get_basename() + ".owdb"
+	return scene_path.get_basename() + OpenWorldDatabase.DATABASE_EXTENSION
 
 func get_user_database_path(database_name: String) -> String:
 	if database_name == "":
 		return ""
 	
-	# Ensure the database name has the correct extension
 	var db_name = database_name
-	if not db_name.ends_with(".owdb"):
-		db_name += ".owdb"
+	if not db_name.ends_with(OpenWorldDatabase.DATABASE_EXTENSION):
+		db_name += OpenWorldDatabase.DATABASE_EXTENSION
 	
 	return "user://" + db_name
 
-func save_database():
-	var db_path = get_database_path()
+# Consolidated save function
+func save_database(custom_name: String = ""):
+	var db_path = _get_database_path(custom_name)
 	if db_path == "":
-		print("Error: Scene must be saved before saving database")
+		print("Error: Cannot determine database path")
 		return
 	
 	_save_database_to_path(db_path)
 
-func save_custom_database(database_name: String):
-	var custom_path = get_user_database_path(database_name)
-	if custom_path == "":
-		print("Error: Invalid database name")
+# Consolidated load function  
+func load_database(custom_name: String = ""):
+	var db_path = _get_database_path(custom_name)
+	if db_path == "" or not FileAccess.file_exists(db_path):
+		if custom_name != "" and owdb.debug_enabled:
+			print("Custom database not found: ", db_path)
 		return
 	
-	_save_database_to_path(custom_path)
-	
-	if owdb.debug_enabled:
-		print("Custom database saved to: ", custom_path)
+	_load_database_from_path(db_path)
+
+func _get_database_path(custom_name: String = "") -> String:
+	if custom_name != "":
+		return get_user_database_path(custom_name)
+	return get_database_path()
+
+func list_custom_databases() -> Array[String]:
+	var databases = []
+	var dir = DirAccess.open("user://")
+	if dir:
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		while file_name != "":
+			if file_name.ends_with(OpenWorldDatabase.DATABASE_EXTENSION):
+				databases.append(file_name.get_basename())
+			file_name = dir.get_next()
+		dir.list_dir_end()
+	return databases
+
+func delete_custom_database(database_name: String) -> bool:
+	var db_path = get_user_database_path(database_name)
+	if FileAccess.file_exists(db_path):
+		DirAccess.remove_absolute(db_path)
+		return true
+	return false
 
 func _save_database_to_path(db_path: String):
-	# First, update all currently loaded nodes and handle size/position changes
-	for node in owdb.get_all_owd_nodes():
-		var uid = node.get_meta("_owd_uid", "")
-		if uid == "":
-			continue
-		
-		owdb.handle_node_rename(node)
+	# Update all currently loaded nodes and handle size/position changes
+	for uid in owdb.loaded_nodes_by_uid:
+		var node = owdb.loaded_nodes_by_uid[uid]
+		owdb.node_handler.handle_node_rename(node)
 		
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})
 		owdb.node_monitor.update_stored_node(node, true)
@@ -80,12 +100,7 @@ func _save_database_to_path(db_path: String):
 		print("Error: Could not create database file at: ", db_path)
 		return
 	
-	var top_level_uids = []
-	for uid in owdb.node_monitor.stored_nodes:
-		if owdb.node_monitor.stored_nodes[uid].parent_uid == "":
-			top_level_uids.append(uid)
-	
-	top_level_uids.sort()
+	var top_level_uids = _get_top_level_uids()
 	
 	for uid in top_level_uids:
 		_write_node_recursive(file, uid, 0)
@@ -94,24 +109,14 @@ func _save_database_to_path(db_path: String):
 	if owdb.debug_enabled:
 		print("Database saved successfully to: ", db_path)
 
-func load_database():
-	var db_path = get_database_path()
-	if db_path == "" or not FileAccess.file_exists(db_path):
-		return
+func _get_top_level_uids() -> Array:
+	var top_level_uids = []
+	for uid in owdb.node_monitor.stored_nodes:
+		if owdb.node_monitor.stored_nodes[uid].parent_uid == "":
+			top_level_uids.append(uid)
 	
-	_load_database_from_path(db_path)
-
-func load_custom_database(database_name: String):
-	var custom_path = get_user_database_path(database_name)
-	if custom_path == "" or not FileAccess.file_exists(custom_path):
-		if owdb.debug_enabled:
-			print("Custom database not found: ", custom_path)
-		return
-	
-	_load_database_from_path(custom_path)
-	
-	if owdb.debug_enabled:
-		print("Custom database loaded from: ", custom_path)
+	top_level_uids.sort()
+	return top_level_uids
 
 func _load_database_from_path(db_path: String):
 	var file = FileAccess.open(db_path, FileAccess.READ)
@@ -179,14 +184,18 @@ func _write_node_recursive(file: FileAccess, uid: String, depth: int):
 	
 	file.store_line(line)
 	
+	var child_uids = _get_child_uids(uid)
+	for child_uid in child_uids:
+		_write_node_recursive(file, child_uid, depth + 1)
+
+func _get_child_uids(parent_uid: String) -> Array:
 	var child_uids = []
 	for child_uid in owdb.node_monitor.stored_nodes:
-		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == uid:
+		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == parent_uid:
 			child_uids.append(child_uid)
 	
 	child_uids.sort()
-	for child_uid in child_uids:
-		_write_node_recursive(file, child_uid, depth + 1)
+	return child_uids
 
 func _parse_line(line: String) -> Dictionary:
 	var parts = line.split("|")
@@ -197,23 +206,12 @@ func _parse_line(line: String) -> Dictionary:
 		"uid": parts[0],
 		"scene": parts[1].strip_edges().trim_prefix("\"").trim_suffix("\""),
 		"parent_uid": "",
-		"position": _parse_vector3(parts[2]),
-		"rotation": _parse_vector3(parts[3]),
-		"scale": _parse_vector3(parts[4]),
+		"position": NodeUtils.parse_vector3(parts[2]),
+		"rotation": NodeUtils.parse_vector3(parts[3]),
+		"scale": NodeUtils.parse_vector3(parts[4]),
 		"size": parts[5].to_float(),
 		"properties": _parse_properties(parts[6] if parts.size() > 6 else "{}")
 	}
-
-func _parse_vector3(vector_str: String) -> Vector3:
-	var components = vector_str.split(",")
-	if components.size() != 3:
-		return Vector3.ZERO
-	
-	return Vector3(
-		components[0].to_float(),
-		components[1].to_float(),
-		components[2].to_float()
-	)
 
 func _parse_properties(props_str: String) -> Dictionary:
 	if props_str == "{}" or props_str == "":
