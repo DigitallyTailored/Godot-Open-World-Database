@@ -5,6 +5,7 @@ render_mode depth_draw_opaque, cull_back;
 uniform sampler2D water_texture : source_color, hint_default_white;
 uniform sampler2D sand_texture : source_color, hint_default_white;
 uniform sampler2D grass_texture : source_color, hint_default_white;
+uniform sampler2D grass_normal : hint_roughness_normal;
 uniform sampler2D rock_texture : source_color, hint_default_white;
 uniform sampler2D snow_texture : source_color, hint_default_white;
 
@@ -13,6 +14,9 @@ uniform float texture_scale : hint_range(0.1, 100.0) = 10.0;
 
 // Blend sharpness - higher values create sharper transitions
 uniform float blend_sharpness : hint_range(0.1, 10.0) = 2.0;
+
+// Normal map strength
+uniform float normal_scale : hint_range(-16.0, 16.0) = 2.0;
 
 // Anti-tiling controls
 uniform bool enable_anti_tiling = true;
@@ -119,6 +123,9 @@ void fragment() {
     vec4 rock_tex = texture_no_tile(rock_texture, tiled_uv, mipmap_bias);
     vec4 snow_tex = texture_no_tile(snow_texture, tiled_uv, mipmap_bias);
 
+    // Sample grass normal map
+    vec4 grass_normal_tex = texture_no_tile(grass_normal, tiled_uv, mipmap_bias);
+
     // Extract color components for blending weights
     vec3 vc = vertex_color.rgb;
 
@@ -162,4 +169,10 @@ void fragment() {
 
     final_color *= 0.5;
     ALBEDO = final_color.rgb;
+
+    // Apply grass normal map where grass is present
+    // Blend between default normal and grass normal based on grass weight
+    vec3 default_normal = vec3(0.5, 0.5, 1.0); // Default normal map value
+    NORMAL_MAP = mix(default_normal, grass_normal_tex.rgb, grass_weight);
+    NORMAL_MAP_DEPTH = normal_scale;
 }

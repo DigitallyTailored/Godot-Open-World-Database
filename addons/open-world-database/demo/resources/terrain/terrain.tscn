@@ -57,7 +57,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_iuy40")
 
 [node name="Grass" type="Node3D" parent="." node_paths=PackedStringArray("terrain_generator", "camera")]
 script = ExtResource("4_bsqx8")
-grass_density = 10000
+grass_density = 400
 grass_height_min = 0.5
 grass_height_max = 0.7
 grass_width = 0.05
@@ -67,4 +67,4 @@ max_chunks_per_frame = 1
 grass_shader = ExtResource("5_tmr3h")
 max_tilt_angle = 55.0
 terrain_generator = NodePath("..")
-camera = NodePath("../../../../../../../../../@Node3DEditor@12336/@HSplitContainer@11535/@HSplitContainer@11537/@VSplitContainer@11539/@Node3DEditorViewportContainer@11540/@Node3DEditorViewport@11587/@SubViewportContainer@11541/@SubViewport@11542/@Camera3D@11544")
+camera = NodePath("../../../../../../../../../@Node3DEditor@11805/@HSplitContainer@10933/@HSplitContainer@10935/@VSplitContainer@10937/@Node3DEditorViewportContainer@10938/@Node3DEditorViewport@10987/@SubViewportContainer@10939/@SubViewport@10940/@Camera3D@10942")

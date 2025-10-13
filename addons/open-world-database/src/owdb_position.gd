@@ -6,8 +6,6 @@ var last_position: Vector3 = Vector3.INF
 var owdb: OpenWorldDatabase
 var position_id: String = ""
 
-const UPDATE_THRESHOLD_SQUARED: float = 1.0
-
 func _ready():
 	_find_owdb()
 	if owdb:
@@ -49,7 +47,7 @@ func _process(_delta):
 	var current_pos = global_position
 	var distance_squared = last_position.distance_squared_to(current_pos)
 	
-	if distance_squared >= UPDATE_THRESHOLD_SQUARED:
+	if distance_squared >= 1.0:
 		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
 		last_position = current_pos
 
