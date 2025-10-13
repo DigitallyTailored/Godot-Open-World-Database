@@ -17,6 +17,12 @@ static func get_valid_node_uid(node: Node) -> String:
 		return ""
 	return node.get_meta("_owd_uid", "")
 
+static func get_chunk_key(size: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> Vector3:
+	return Vector3(size, chunk_pos.x, chunk_pos.y)
+
+static func get_chunk_position(position: Vector3, chunk_size: float) -> Vector2i:
+	return Vector2i(int(position.x / chunk_size), int(position.z / chunk_size))
+
 static func get_node_aabb(node: Node, exclude_top_level_transform: bool = true) -> AABB:
 	var bounds: AABB = AABB()
 
@@ -98,7 +104,6 @@ static func convert_property_value(stored_value: Variant, current_value: Variant
 	
 	return stored_value
 
-# Consolidated vector parsing
 static func parse_vector_components(str_val: String, component_count: int) -> Array:
 	var start = 1 if str_val.length() > 0 and str_val[0] == '(' else 0
 	var end = str_val.length() - 1 if str_val.length() > 0 and str_val[-1] == ')' else str_val.length()
@@ -132,39 +137,6 @@ static func parse_color(str_val: String) -> Color:
 		return Color(components[0], components[1], components[2], a)
 	return Color.WHITE
 
-# Tree traversal utilities
-static func collect_node_hierarchy(node: Node, collection: Array):
-	if node.has_meta("_owd_uid"):
-		collection.append(node)
-	
-	for child in node.get_children():
-		if child.has_meta("_owd_uid"):
-			collect_node_hierarchy(child, collection)
-
-static func move_node_hierarchy_to_chunks(node: Node, owdb: OpenWorldDatabase):
-	if node.has_meta("_owd_uid"):
-		var uid = node.get_meta("_owd_uid")
-		var node_size = calculate_node_size(node)
-		var node_position = node.global_position if node is Node3D else Vector3.ZERO
-		
-		owdb.node_monitor.update_stored_node(node)
-		owdb.add_to_chunk_lookup(uid, node_position, node_size)
-	
-	for child in node.get_children():
-		if child.has_meta("_owd_uid"):
-			move_node_hierarchy_to_chunks(child, owdb)
-
-static func find_visible_camera(node: Node) -> Camera3D:
-	if node is Camera3D and node.visible:
-		return node
-	
-	for child in node.get_children():
-		var found = find_visible_camera(child)
-		if found:
-			return found
-	return null
-
-# Utility functions for common operations
 static func update_chunk_lookup_uid(chunk_lookup: Dictionary, old_uid: String, new_uid: String):
 	for size in chunk_lookup:
 		for chunk_pos in chunk_lookup[size]:

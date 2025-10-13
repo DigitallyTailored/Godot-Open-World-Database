@@ -47,8 +47,8 @@ func save_database(custom_name: String = ""):
 func load_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "" or not FileAccess.file_exists(db_path):
-		if custom_name != "" and owdb.debug_enabled:
-			print("Custom database not found: ", db_path)
+		if custom_name != "":
+			owdb.debug_log("Custom database not found: ", db_path)
 		return
 	
 	_load_database_from_path(db_path)
@@ -115,8 +115,7 @@ func _save_database_to_path(db_path: String):
 		_write_node_recursive(file, uid, 0)
 	
 	file.close()
-	if owdb.debug_enabled:
-		print("Database saved successfully to: ", db_path)
+	owdb.debug_log("Database saved successfully to: ", db_path)
 
 func _get_top_level_uids() -> Array:
 	var top_level_uids = []
@@ -124,7 +123,7 @@ func _get_top_level_uids() -> Array:
 		if owdb.node_monitor.stored_nodes[uid].parent_uid == "":
 			top_level_uids.append(uid)
 	
-	top_level_uids.sort()
+	#top_level_uids.sort()
 	return top_level_uids
 
 func _load_database_from_path(db_path: String):
@@ -166,8 +165,7 @@ func _load_database_from_path(db_path: String):
 		owdb.add_to_chunk_lookup(info.uid, info.position, info.size)
 	
 	file.close()
-	if owdb.debug_enabled:
-		print("Database loaded successfully from: ", db_path)
+	owdb.debug_log("Database loaded successfully from: ", db_path)
 
 func debug():
 	print("")
@@ -203,7 +201,7 @@ func _get_child_uids(parent_uid: String) -> Array:
 		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == parent_uid:
 			child_uids.append(child_uid)
 	
-	child_uids.sort()
+	#child_uids.sort()
 	return child_uids
 
 func _parse_line(line: String) -> Dictionary:

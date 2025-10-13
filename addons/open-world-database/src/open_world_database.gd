@@ -38,6 +38,13 @@ var batch_processor: BatchProcessor
 var is_loading: bool = false
 var nodes_being_unloaded: Dictionary = {} # uid -> true
 
+func debug_log(message: String, value = null):
+	if debug_enabled:
+		if value != null:
+			print(message, value)
+		else:
+			print(message)
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		get_tree().auto_accept_quit = false
@@ -88,7 +95,7 @@ func get_node_by_uid(uid: String) -> Node:
 
 func add_to_chunk_lookup(uid: String, position: Vector3, size: float):
 	var size_cat = get_size_category(size)
-	var chunk_pos = Vector2i(int(position.x / chunk_sizes[size_cat]), int(position.z / chunk_sizes[size_cat])) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
+	var chunk_pos = NodeUtils.get_chunk_position(position, chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
 	
 	if not chunk_lookup.has(size_cat):
 		chunk_lookup[size_cat] = {}
@@ -100,12 +107,13 @@ func add_to_chunk_lookup(uid: String, position: Vector3, size: float):
 
 func remove_from_chunk_lookup(uid: String, position: Vector3, size: float):
 	var size_cat = get_size_category(size)
-	var chunk_pos = Vector2i(int(position.x / chunk_sizes[size_cat]), int(position.z / chunk_sizes[size_cat])) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
+	var chunk_pos = NodeUtils.get_chunk_position(position, chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
 	
 	if chunk_lookup.has(size_cat) and chunk_lookup[size_cat].has(chunk_pos):
 		chunk_lookup[size_cat][chunk_pos].erase(uid)
 		if chunk_lookup[size_cat][chunk_pos].is_empty():
 			chunk_lookup[size_cat].erase(chunk_pos)
+
 
 func get_size_category(node_size: float) -> Size:
 	if node_size == 0.0:
@@ -143,8 +151,7 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	loaded_nodes_by_uid.erase(uid)
 	batch_processor.remove_from_queues(uid)
 	
-	if debug_enabled:
-		print("NODE REMOVED FROM DATABASE: ", uid, " - ", get_total_database_nodes(), " total database nodes")
+	debug_log("NODE REMOVED FROM DATABASE: " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
 	
 	var child_uids = []
 	for child_uid in node_monitor.stored_nodes:
@@ -213,8 +220,7 @@ func _immediate_load_node(uid: String):
 	loaded_nodes_by_uid[uid] = new_node
 	_setup_listeners(new_node)
 	
-	if debug_enabled:
-		print("NODE LOADED: ", uid, " at ", node_info.position)
+	debug_log("NODE LOADED: " + uid + " at ", node_info.position)
 
 func _immediate_unload_node(uid: String):
 	var node = loaded_nodes_by_uid.get(uid)
@@ -235,8 +241,7 @@ func _immediate_unload_node(uid: String):
 	
 	call_deferred("_cleanup_unload_tracking", uid)
 	
-	if debug_enabled:
-		print("NODE UNLOADED: ", uid)
+	debug_log("NODE UNLOADED: ", uid)
 
 func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)
@@ -267,8 +272,7 @@ func _unload_node_not_in_chunk(node: Node):
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
 	
-	if debug_enabled:
-		print("NODE REMOVED (unloaded chunk): ", node.name, " - ", get_total_database_nodes(), " total database nodes")
+	debug_log("NODE REMOVED (unloaded chunk): " + node.name + " - " + str(get_total_database_nodes()) + " total database nodes")
 	
 	node.free()
 	is_loading = was_loading
@@ -282,8 +286,7 @@ func _check_node_removal(node):
 		return
 	
 	if nodes_being_unloaded.has(uid):
-		if debug_enabled:
-			print("NODE EXITED (system unload): ", uid)
+		debug_log("NODE EXITED (system unload): ", uid)
 		return
 	
 	if node_monitor.stored_nodes.has(uid):
@@ -294,12 +297,10 @@ func _deferred_check_node_removal(node, uid: String):
 		return
 	
 	if node and node.is_inside_tree():
-		if debug_enabled:
-			print("NODE MOVED (still in tree): ", uid)
+		debug_log("NODE MOVED (still in tree): ", uid)
 		return
 	
 	if node_monitor.stored_nodes.has(uid) and not nodes_being_unloaded.has(uid):
 		_remove_node_and_children_from_database(uid, node)
 		
-		if debug_enabled:
-			print("NODE AUTO-REMOVED (user freed): ", uid, " - ", get_total_database_nodes(), " total database nodes")
+		debug_log("NODE AUTO-REMOVED (user freed): " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")

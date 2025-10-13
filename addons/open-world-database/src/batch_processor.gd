@@ -76,12 +76,11 @@ func _process_batch():
 			if callback.is_valid():
 				callback.call()
 		
-		if owdb.debug_enabled:
-			print("Batch processing completed. All operations processed.")
+		owdb.debug_log("Batch processing completed. All operations processed.")
 	
-	if owdb.debug_enabled and operations_performed > 0:
+	if operations_performed > 0:
 		var time_taken = Time.get_ticks_msec() - start_time
-		print("Batch processed ", operations_performed, " operations in ", time_taken, "ms. Remaining: ", operation_order.size())
+		owdb.debug_log("Batch processed " + str(operations_performed) + " operations in " + str(time_taken) + "ms. Remaining: " + str(operation_order.size()))
 	
 	is_processing_batch = false
 
@@ -186,9 +185,8 @@ func force_process_queues():
 		if callback.is_valid():
 			callback.call()
 	
-	if owdb.debug_enabled:
-		var time_taken = Time.get_ticks_msec() - start_time
-		print("Force processed ", actual_operations, "/", total_operations, " operations in ", time_taken, "ms")
+	var time_taken = Time.get_ticks_msec() - start_time
+	owdb.debug_log("Force processed " + str(actual_operations) + "/" + str(total_operations) + " operations in " + str(time_taken) + "ms")
 
 # NEW: Clean up invalid operations from queue
 func cleanup_invalid_operations():
@@ -203,8 +201,8 @@ func cleanup_invalid_operations():
 		pending_operations.erase(uid)
 		operation_order.erase(uid)
 	
-	if owdb.debug_enabled and invalid_uids.size() > 0:
-		print("Cleaned up ", invalid_uids.size(), " invalid operations from queue")
+	if invalid_uids.size() > 0:
+		owdb.debug_log("Cleaned up " + str(invalid_uids.size()) + " invalid operations from queue")
 
 func update_batch_settings():
 	if batch_timer:

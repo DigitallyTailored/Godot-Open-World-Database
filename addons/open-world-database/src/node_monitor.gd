@@ -19,6 +19,7 @@ func _initialize_baseline_values():
 		DirectionalLight3D.new(), SpotLight3D.new(), OmniLight3D.new(),
 		AudioStreamPlayer.new(), AudioStreamPlayer3D.new(),
 		Path3D.new(), PathFollow3D.new(), NavigationAgent3D.new(),
+		CSGBox3D.new(), CSGCombiner3D.new(), CSGCylinder3D.new(), CSGMesh3D.new(),CSGPolygon3D.new()
 	]
 	
 	for node in node_types:

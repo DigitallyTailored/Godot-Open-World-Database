@@ -3,7 +3,6 @@ extends Node3D
 class_name OWDBPosition
 
 var last_position: Vector3 = Vector3.INF
-var last_int_position: Vector3i = Vector3i(999999, 999999, 999999)
 var owdb: OpenWorldDatabase
 var position_id: String = ""
 
@@ -31,7 +30,6 @@ func _find_owdb():
 	# Search the entire tree as fallback
 	var root = get_tree().root
 	owdb = _find_owdb_recursive(root)
-	
 
 func _find_owdb_recursive(node: Node) -> OpenWorldDatabase:
 	if node is OpenWorldDatabase:
@@ -49,25 +47,17 @@ func _process(_delta):
 		return
 	
 	var current_pos = global_position
-	var current_int_pos = Vector3i(int(current_pos.x), int(current_pos.y), int(current_pos.z))
-	
-	# Quick integer position check first
-	if current_int_pos == last_int_position:
-		return
-	
-	# If integer positions differ, check squared distance
 	var distance_squared = last_position.distance_squared_to(current_pos)
+	
 	if distance_squared >= UPDATE_THRESHOLD_SQUARED:
 		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
 		last_position = current_pos
-		last_int_position = current_int_pos
 
 func force_update():
 	if owdb and not owdb.is_loading and position_id != "":
 		var current_pos = global_position
 		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
 		last_position = current_pos
-		last_int_position = Vector3i(int(current_pos.x), int(current_pos.y), int(current_pos.z))
 
 func get_position_id() -> String:
 	return position_id

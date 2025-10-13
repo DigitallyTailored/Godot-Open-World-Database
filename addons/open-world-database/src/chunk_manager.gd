@@ -28,8 +28,7 @@ func register_position(position_node: OWDBPosition) -> String:
 	position_registry[position_id] = position_node
 	position_required_chunks[position_id] = {}
 	
-	if owdb.debug_enabled:
-		print("ChunkManager: Registered OWDBPosition with ID: ", position_id)
+	owdb.debug_log("ChunkManager: Registered OWDBPosition with ID: ", position_id)
 	
 	return position_id
 
@@ -46,14 +45,13 @@ func unregister_position(position_id: String):
 	position_registry.erase(position_id)
 	position_required_chunks.erase(position_id)
 	
-	if owdb.debug_enabled:
-		print("ChunkManager: Unregistered OWDBPosition with ID: ", position_id)
+	owdb.debug_log("ChunkManager: Unregistered OWDBPosition with ID: ", position_id)
 
 func is_chunk_loaded(size_cat: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> bool:
 	if size_cat == OpenWorldDatabase.Size.ALWAYS_LOADED:
 		return true
 	
-	var chunk_key = Vector3(size_cat, chunk_pos.x, chunk_pos.y)
+	var chunk_key = NodeUtils.get_chunk_key(size_cat, chunk_pos)
 	
 	if pending_chunk_operations.has(chunk_key):
 		return pending_chunk_operations[chunk_key] == "load"
@@ -104,10 +102,7 @@ func update_position_chunks(position_id: String, position: Vector3):
 
 func _calculate_required_chunks_for_size(size: OpenWorldDatabase.Size, position: Vector3) -> Dictionary:
 	var chunk_size = owdb.chunk_sizes[size]
-	var center_chunk = Vector2i(
-		int(position.x / chunk_size),
-		int(position.z / chunk_size)
-	)
+	var center_chunk = NodeUtils.get_chunk_position(position, chunk_size)
 	
 	var required_chunks = {}
 	for x in range(-owdb.chunk_load_range, owdb.chunk_load_range + 1):
@@ -118,7 +113,7 @@ func _calculate_required_chunks_for_size(size: OpenWorldDatabase.Size, position:
 	return required_chunks
 
 func _add_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, position_id: String):
-	var chunk_key = Vector3(size, chunk_pos.x, chunk_pos.y)
+	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)
 	
 	if not chunk_requirements.has(chunk_key):
 		chunk_requirements[chunk_key] = {}
@@ -128,7 +123,7 @@ func _add_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, p
 	chunk_requirements[chunk_key][position_id] = true
 
 func _remove_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, position_id: String):
-	var chunk_key = Vector3(size, chunk_pos.x, chunk_pos.y)
+	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)
 	
 	if not chunk_requirements.has(chunk_key):
 		return
@@ -157,11 +152,10 @@ func _on_batch_complete():
 	
 	pending_chunk_operations.clear()
 	
-	if owdb.debug_enabled:
-		print("Chunk states updated after batch completion")
+	owdb.debug_log("Chunk states updated after batch completion")
 
 func _queue_chunk_operation(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, operation: String):
-	var chunk_key = Vector3(size, chunk_pos.x, chunk_pos.y)
+	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)
 	pending_chunk_operations[chunk_key] = operation
 	
 	if operation == "load":

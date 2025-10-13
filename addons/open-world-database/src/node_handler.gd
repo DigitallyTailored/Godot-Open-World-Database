@@ -29,8 +29,7 @@ func handle_child_entered_tree(node: Node):
 					node.set_meta("_owd_uid", new_uid)
 					node.name = new_uid
 					
-					if owdb.debug_enabled:
-						print("DUPLICATE UID DETECTED: ", uid, " -> ", new_uid)
+					owdb.debug_log("DUPLICATE UID DETECTED: " + uid + " -> ", new_uid)
 				# If existing_node is not valid anymore, we can continue with the current UID
 			
 	if not (node is Node3D or node.get_class() == "Node"):
@@ -58,8 +57,7 @@ func handle_child_exiting_tree(node: Node):
 		owdb._check_node_removal(node)
 
 func _handle_node_move(node: Node):
-	if owdb.debug_enabled:
-		print("NODE MOVED: ", node.name)
+	owdb.debug_log("NODE MOVED: ", node.name)
 	
 	owdb.node_monitor.update_stored_node(node)
 	
@@ -102,12 +100,10 @@ func _handle_new_node_positioning(node: Node):
 	
 	owdb.add_to_chunk_lookup(uid, node_position, node_size)
 	
-	if owdb.debug_enabled:
-		print("NODE ADDED: ", node.name, " at position: ", node_position, " - ", owdb.get_total_database_nodes(), " total nodes")
+	owdb.debug_log("NODE ADDED: " + node.name + " at position: " + str(node_position) + " - " + str(owdb.get_total_database_nodes()) + " total nodes")
 	
 	if not owdb.chunk_manager.is_chunk_loaded(size_cat, chunk_pos):
-		if owdb.debug_enabled:
-			print("NODE ADDED TO UNLOADED CHUNK - UNLOADING: ", node.name)
+		owdb.debug_log("NODE ADDED TO UNLOADED CHUNK - UNLOADING: ", node.name)
 		owdb.call_deferred("_unload_node_not_in_chunk", node)
 		return
 
