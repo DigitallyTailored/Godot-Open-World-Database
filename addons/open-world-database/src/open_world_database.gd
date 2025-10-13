@@ -19,7 +19,6 @@ const SKIP_PROPERTIES = [
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
 @export var chunk_load_range: int = 3
 @export var debug_enabled: bool = false
-@export var camera: Node
 
 @export_tool_button("debug info", "Debug") var debug_action = debug
 
@@ -123,6 +122,9 @@ func get_total_database_nodes() -> int:
 
 func get_currently_loaded_nodes() -> int:
 	return loaded_nodes_by_uid.size()
+
+func get_active_position_count() -> int:
+	return chunk_manager.get_active_position_count()
 
 func update_batch_settings():
 	batch_processor.batch_time_limit_ms = batch_time_limit_ms
@@ -239,15 +241,14 @@ func _immediate_unload_node(uid: String):
 func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)
 
-func _process(_delta: float) -> void:
-	# Only use camera tracking if no OWDBPosition node exists
-	if chunk_manager and not is_loading:
-		chunk_manager._update_camera_chunks()
-
 func debug():
 	print("=== OWDB DEBUG INFO ===")
 	print("Nodes currently loaded: ", get_currently_loaded_nodes())
 	print("Total nodes in database: ", get_total_database_nodes())
+	print("Active OWDBPosition nodes: ", get_active_position_count())
+	var chunk_info = chunk_manager.get_chunk_requirement_info()
+	print("Chunks required: ", chunk_info.total_chunks_required)
+	print("Chunks loaded: ", chunk_info.chunks_loaded)
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():

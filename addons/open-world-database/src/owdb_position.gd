@@ -2,15 +2,22 @@
 extends Node3D
 class_name OWDBPosition
 
-@export var update_threshold: float = 1.0  # Minimum distance to move before triggering update
-@export var debug_enabled: bool = false
-
 var last_position: Vector3 = Vector3.INF
+var last_int_position: Vector3i = Vector3i(999999, 999999, 999999)
 var owdb: OpenWorldDatabase
+var position_id: String = ""
+
+const UPDATE_THRESHOLD_SQUARED: float = 1.0
 
 func _ready():
-	#last_position = global_position
 	_find_owdb()
+	if owdb:
+		position_id = owdb.chunk_manager.register_position(self)
+		call_deferred("force_update")
+
+func _exit_tree():
+	if owdb and position_id != "":
+		owdb.chunk_manager.unregister_position(position_id)
 
 func _find_owdb():
 	# Search up the tree for OWDB
@@ -18,8 +25,6 @@ func _find_owdb():
 	while current != null:
 		if current is OpenWorldDatabase:
 			owdb = current
-			if debug_enabled:
-				print("OWDBPosition: Found OWDB as ancestor")
 			return
 		current = current.get_parent()
 	
@@ -27,8 +32,6 @@ func _find_owdb():
 	var root = get_tree().root
 	owdb = _find_owdb_recursive(root)
 	
-	if owdb and debug_enabled:
-		print("OWDBPosition: Found OWDB in tree")
 
 func _find_owdb_recursive(node: Node) -> OpenWorldDatabase:
 	if node is OpenWorldDatabase:
@@ -42,18 +45,29 @@ func _find_owdb_recursive(node: Node) -> OpenWorldDatabase:
 	return null
 
 func _process(_delta):
-	if not owdb or owdb.is_loading:
+	if not owdb or owdb.is_loading or position_id == "":
 		return
 	
 	var current_pos = global_position
-	if last_position.distance_to(current_pos) >= update_threshold:
-		if debug_enabled:
-			print("OWDBPosition: Position changed by ", last_position.distance_to(current_pos), " - triggering chunk update")
-		
-		owdb.chunk_manager._update_chunks_from_position(current_pos)
+	var current_int_pos = Vector3i(int(current_pos.x), int(current_pos.y), int(current_pos.z))
+	
+	# Quick integer position check first
+	if current_int_pos == last_int_position:
+		return
+	
+	# If integer positions differ, check squared distance
+	var distance_squared = last_position.distance_squared_to(current_pos)
+	if distance_squared >= UPDATE_THRESHOLD_SQUARED:
+		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
 		last_position = current_pos
+		last_int_position = current_int_pos
 
 func force_update():
-	if owdb and not owdb.is_loading:
-		owdb.chunk_manager._update_chunks_from_position(global_position)
-		last_position = global_position
+	if owdb and not owdb.is_loading and position_id != "":
+		var current_pos = global_position
+		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
+		last_position = current_pos
+		last_int_position = Vector3i(int(current_pos.x), int(current_pos.y), int(current_pos.z))
+
+func get_position_id() -> String:
+	return position_id
