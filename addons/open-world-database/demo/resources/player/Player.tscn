@@ -1,10 +1,11 @@
-[gd_scene load_steps=22 format=3 uid="uid://dndq0a8q5mofo"]
+[gd_scene load_steps=23 format=3 uid="uid://dndq0a8q5mofo"]
 
 [ext_resource type="Script" uid="uid://c8spk1p6h5e3e" path="res://addons/open-world-database/demo/resources/player/player.gd" id="1_b5nq1"]
 [ext_resource type="AudioStream" uid="uid://5miird7u0rtl" path="res://addons/open-world-database/demo/resources/sound/hit.wav" id="2_l2acf"]
 [ext_resource type="AudioStream" uid="uid://4fjrr2srfwda" path="res://addons/open-world-database/demo/resources/sound/swing.wav" id="3_1y1cw"]
 [ext_resource type="AudioStream" uid="uid://bbsr8dl0t4hes" path="res://addons/open-world-database/demo/resources/sound/gem.wav" id="4_1y1cw"]
 [ext_resource type="AudioStream" uid="uid://dbbx76qcmhdel" path="res://addons/open-world-database/demo/resources/sound/block.wav" id="4_ip1nt"]
+[ext_resource type="Script" uid="uid://buh6cddjkykg2" path="res://addons/open-world-database/src/owdb_position.gd" id="6_ip1nt"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_rb33l"]
 radius = 0.30506
@@ -293,7 +294,7 @@ script = ExtResource("1_b5nq1")
 shape = SubResource("CapsuleShape3D_rb33l")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.938143, -0.346248, 0, 0.346248, 0.938143, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 0.93814296, -0.34624824, 0, 0.34624824, 0.93814296, 0, 0, 0)
 mesh = SubResource("CapsuleMesh_rb33l")
 surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
 
@@ -367,3 +368,7 @@ pitch_scale = 2.0
 
 [node name="blocked" type="AudioStreamPlayer3D" parent="sfx"]
 stream = ExtResource("4_ip1nt")
+
+[node name="OWDBPosition" type="Node3D" parent="."]
+script = ExtResource("6_ip1nt")
+metadata/_custom_type_script = "uid://buh6cddjkykg2"

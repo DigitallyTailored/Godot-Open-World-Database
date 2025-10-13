@@ -31,6 +31,22 @@ func is_chunk_loaded(size_cat: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> b
 	
 	return loaded_chunks.has(size_cat) and loaded_chunks[size_cat].has(chunk_pos)
 
+func _find_position_node() -> OWDBPosition:
+	# Search for OWDBPosition node in the tree
+	var root = owdb.get_tree().root
+	return _find_position_node_recursive(root)
+
+func _find_position_node_recursive(node: Node) -> OWDBPosition:
+	if node is OWDBPosition:
+		return node
+	
+	for child in node.get_children():
+		var result = _find_position_node_recursive(child)
+		if result:
+			return result
+	
+	return null
+
 func _get_camera() -> Node3D:
 	if Engine.is_editor_hint():
 		var viewport = EditorInterface.get_editor_viewport_3d(0)
@@ -43,14 +59,9 @@ func _get_camera() -> Node3D:
 	owdb.camera = NodeUtils.find_visible_camera(owdb.get_tree().root)
 	return owdb.camera
 
-func _update_camera_chunks():
-	var camera = _get_camera()
-	if not camera:
-		return
-	
-	var current_pos = camera.global_position
+func _update_chunks_from_position(position: Vector3):
 	_ensure_always_loaded_chunk()
-	last_camera_position = current_pos
+	last_camera_position = position
 	
 	var sizes = OpenWorldDatabase.Size.values()
 	sizes.reverse()
@@ -58,15 +69,28 @@ func _update_camera_chunks():
 	for size in sizes:
 		if size == OpenWorldDatabase.Size.ALWAYS_LOADED or size >= owdb.chunk_sizes.size():
 			continue
-		_update_chunks_for_size(size, current_pos)
+		_update_chunks_for_size(size, position)
 	
-	# NEW: Clean up any invalid operations after chunk updates
+	# Clean up any invalid operations after chunk updates
 	owdb.batch_processor.cleanup_invalid_operations()
 	
 	if not batch_callback_registered:
 		owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
 		batch_callback_registered = true
 
+func _update_camera_chunks():
+	# First try to find OWDBPosition node - if it exists, don't do camera updates
+	var position_node = _find_position_node()
+	if position_node:
+		return  # OWDBPosition node will handle updates
+	
+	# Fallback to camera-based tracking
+	var camera = _get_camera()
+	if not camera:
+		return
+	
+	var current_pos = camera.global_position
+	_update_chunks_from_position(current_pos)
 
 func _on_batch_complete():
 	for chunk_key in pending_chunk_operations:

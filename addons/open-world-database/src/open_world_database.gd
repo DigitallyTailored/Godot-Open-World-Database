@@ -124,7 +124,6 @@ func get_total_database_nodes() -> int:
 func get_currently_loaded_nodes() -> int:
 	return loaded_nodes_by_uid.size()
 
-# Direct batch processor access (removing wrapper functions)
 func update_batch_settings():
 	batch_processor.batch_time_limit_ms = batch_time_limit_ms
 	batch_processor.batch_interval_ms = batch_interval_ms
@@ -139,13 +138,12 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	
 	remove_from_chunk_lookup(uid, node_info.position, node_info.size)
 	node_monitor.stored_nodes.erase(uid)
-	loaded_nodes_by_uid.erase(uid)  # ← ADD THIS LINE
+	loaded_nodes_by_uid.erase(uid)
 	batch_processor.remove_from_queues(uid)
 	
 	if debug_enabled:
 		print("NODE REMOVED FROM DATABASE: ", uid, " - ", get_total_database_nodes(), " total database nodes")
 	
-	# Remove all child nodes from database as well
 	var child_uids = []
 	for child_uid in node_monitor.stored_nodes:
 		if node_monitor.stored_nodes[child_uid].parent_uid == uid:
@@ -154,7 +152,6 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	for child_uid in child_uids:
 		_remove_node_and_children_from_database(child_uid)
 
-# Consolidated database interface
 func save_database(custom_name: String = ""):
 	database.save_database(custom_name)
 
@@ -167,13 +164,12 @@ func list_custom_databases() -> Array[String]:
 func delete_custom_database(database_name: String) -> bool:
 	return database.delete_custom_database(database_name)
 
-# Internal loading functions (called by batch processor)
 func _immediate_load_node(uid: String):
 	if uid not in node_monitor.stored_nodes:
 		return
 	
 	if loaded_nodes_by_uid.has(uid):
-		return  # Already loaded
+		return
 		
 	var node_info = node_monitor.stored_nodes[uid]
 	var new_node: Node
@@ -244,6 +240,7 @@ func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)
 
 func _process(_delta: float) -> void:
+	# Only use camera tracking if no OWDBPosition node exists
 	if chunk_manager and not is_loading:
 		chunk_manager._update_camera_chunks()
 
@@ -251,24 +248,6 @@ func debug():
 	print("=== OWDB DEBUG INFO ===")
 	print("Nodes currently loaded: ", get_currently_loaded_nodes())
 	print("Total nodes in database: ", get_total_database_nodes())
-	"""
-	var queue_info = batch_processor.get_queue_info()
-	print("Operations queued: ", queue_info.total_queue_size)
-	print("Load operations: ", queue_info.load_operations_queued)
-	print("Unload operations: ", queue_info.unload_operations_queued)
-	print("Batch processing active: ", queue_info.batch_processing_active)
-	print("Loaded chunks per size:")
-	
-	for size in chunk_manager.loaded_chunks:
-		print("  ", Size.keys()[size], ": ", chunk_manager.loaded_chunks[size].size(), " chunks")
-	
-	print("Pending chunk operations: ", chunk_manager.pending_chunk_operations.size())
-	
-	print("\nCurrently loaded nodes:")
-	for uid in loaded_nodes_by_uid:
-		print("  - ", uid, " : ", loaded_nodes_by_uid[uid].name)
-	database.debug()
-	"""
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():
@@ -307,21 +286,17 @@ func _check_node_removal(node):
 		return
 	
 	if node_monitor.stored_nodes.has(uid):
-		# Defer the actual removal check to see if node is still in tree
 		call_deferred("_deferred_check_node_removal", node, uid)
 
 func _deferred_check_node_removal(node, uid: String):
-	# Double-check that the node is still valid and the conditions haven't changed
 	if is_loading:
 		return
 	
-	# If node is still in the tree, it was just moved - don't remove from database
 	if node and node.is_inside_tree():
 		if debug_enabled:
 			print("NODE MOVED (still in tree): ", uid)
 		return
 	
-	# If we get here, the node was actually removed/freed
 	if node_monitor.stored_nodes.has(uid) and not nodes_being_unloaded.has(uid):
 		_remove_node_and_children_from_database(uid, node)
 		
