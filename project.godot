@@ -12,8 +12,13 @@ config_version=5
 
 config/name="open-world-database"
 run/main_scene="uid://bjfrcs1obghq6"
-config/features=PackedStringArray("4.4", "Forward Plus")
+config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1536
+window/size/viewport_height=864
 
 [dotnet]
 
@@ -26,3 +31,8 @@ enabled=PackedStringArray("res://addons/open-world-database/plugin.cfg", "res://
 [global_group]
 
 player=""
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+anti_aliasing/screen_space_roughness_limiter/enabled=false

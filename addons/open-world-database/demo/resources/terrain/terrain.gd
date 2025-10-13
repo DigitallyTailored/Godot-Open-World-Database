@@ -117,7 +117,6 @@ func get_island_mask(x: int, z: int) -> float:
 	# Return inverted distance (1 at center, 0 at all edges)
 	return 1.0 - distance_to_edge
 
-
 func create_terrain_mesh_with_surface_tool() -> ArrayMesh:
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -231,9 +230,13 @@ func get_height_at_position(world_pos: Vector3) -> float:
 	if not noise:
 		return 0.0
 	
+	# FIXED: Proper coordinate conversion
 	# Convert world position back to grid coordinates for mask calculation
-	var grid_x = int((world_pos.x / terrain_scale.x * terrain_size.x) + terrain_size.x * 0.5)
-	var grid_z = int((world_pos.z / terrain_scale.y * terrain_size.y) + terrain_size.y * 0.5)
+	var grid_x_float = (world_pos.x * terrain_size.x / terrain_scale.x) + terrain_size.x * 0.5
+	var grid_z_float = (world_pos.z * terrain_size.y / terrain_scale.y) + terrain_size.y * 0.5
+	
+	var grid_x = int(grid_x_float)
+	var grid_z = int(grid_z_float)
 	
 	# Clamp to valid range
 	grid_x = clamp(grid_x, 0, terrain_size.x)
@@ -246,3 +249,62 @@ func get_height_at_position(world_pos: Vector3) -> float:
 	var height = noise_height * island_mask * 2.0
 	
 	return height * height_scale
+
+# NEW FUNCTION: Generate height map for a specific chunk
+func generate_height_map_for_chunk(chunk_world_pos: Vector3, chunk_size_param: float, resolution: int) -> ImageTexture:
+	if not noise:
+		setup_noise()
+	
+	var image = Image.create(resolution, resolution, false, Image.FORMAT_RF)
+	var half_chunk = chunk_size_param * 0.5
+	
+	for y in range(resolution):
+		for x in range(resolution):
+			# Convert pixel coordinates to world position within the chunk
+			var local_x = (float(x) / (resolution - 1)) * chunk_size_param - half_chunk
+			var local_z = (float(y) / (resolution - 1)) * chunk_size_param - half_chunk
+			var world_x = chunk_world_pos.x + local_x
+			var world_z = chunk_world_pos.z + local_z
+			
+			# Get height from noise
+			var noise_height = noise.get_noise_2d(world_x, world_z)
+			noise_height = (noise_height + 1.0) * 0.5  # Normalize to 0-1
+			
+			# Convert world position back to grid coordinates for mask calculation
+			var grid_x_float = (world_x * terrain_size.x / terrain_scale.x) + terrain_size.x * 0.5
+			var grid_z_float = (world_z * terrain_size.y / terrain_scale.y) + terrain_size.y * 0.5
+			
+			var grid_x = int(grid_x_float)
+			var grid_z = int(grid_z_float)
+			
+			# Clamp to valid range
+			grid_x = clamp(grid_x, 0, terrain_size.x)
+			grid_z = clamp(grid_z, 0, terrain_size.y)
+			
+			# Get island mask and apply it
+			var island_mask = get_island_mask(grid_x, grid_z)
+			var height = noise_height * island_mask * 2.0
+			var world_y = height * height_scale
+			
+			# Store height as red channel (0-1 normalized)
+			var normalized_height = height  # Already 0-1 from the calculation above
+			image.set_pixel(x, y, Color(normalized_height, 0, 0, 1))
+	
+	var texture = ImageTexture.new()
+	texture.set_image(image)
+	return texture
+
+# NEW FUNCTION: Get terrain type at normalized height (for shader)
+func get_terrain_type_at_height(normalized_height: float) -> float:
+	# Return a value that the shader can use to determine terrain type
+	# 0.0 = water, 0.25 = sand, 0.5 = grass, 0.75 = rock, 1.0 = snow
+	if normalized_height < water_level:
+		return 0.0
+	elif normalized_height < sand_level:
+		return 0.25
+	elif normalized_height < grass_level:
+		return 0.5
+	elif normalized_height < rock_level:
+		return 0.75
+	else:
+		return 1.0

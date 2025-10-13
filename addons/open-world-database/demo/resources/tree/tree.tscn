@@ -66,3 +66,21 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.344217, 2.09396, -0.729487
 mesh = SubResource("SphereMesh_3ow8u")
 skeleton = NodePath("../..")
 surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(-0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, -0.965926, 0.434379, 2.5567, -0.426675)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")
+
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(-0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, -0.965926, -0.719469, 2.84807, -0.336058)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")
+
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(-0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, -0.965926, -0.122142, 2.2937, 0.750706)
+mesh = SubResource("SphereMesh_3ow8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_aywpg")

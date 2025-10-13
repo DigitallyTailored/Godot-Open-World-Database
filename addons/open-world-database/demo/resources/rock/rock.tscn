@@ -1,0 +1,42 @@
+[gd_scene load_steps=7 format=3 uid="uid://chahtv10na07q"]
+
+[ext_resource type="Texture2D" uid="uid://2khr3dukcfig" path="res://addons/open-world-database/demo/resources/terrain/textures/rock.jpg" id="1_705mh"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_hs5mt"]
+radial_segments = 5
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jht15"]
+albedo_texture = ExtResource("1_705mh")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7xwfa"]
+albedo_texture = ExtResource("1_705mh")
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_c0ok3"]
+points = PackedVector3Array(0.196923, 0.905753, -0.0102963, -0.454286, -0.528417, -0.158148, -0.356246, -0.485458, -0.24115, 0.281872, -0.562439, 0.373798, -0.281119, 0.563694, 0.374756, 0.463618, -0.507709, -0.159941, -0.0139619, 0.588884, -0.453054, -0.194626, -0.84146, 0.290068, 0.0153889, -0.797453, -0.365664, -0.401935, 0.686159, -0.130003, 0.281872, 0.562439, 0.373798, 0.463618, 0.50771, -0.159941, 0.25747, -0.87627, -0.0102656, -0.305814, -0.496265, 0.367827, 0.0433712, -0.484014, -0.468486, -0.194626, 0.84146, 0.290068, -0.014384, 0.878595, -0.282779, -0.257401, -0.880747, -0.100991, -0.454285, 0.528416, -0.158148, 0.196007, 0.84146, 0.290068, -0.0447504, 0.970229, 0.0504802, 0.0461011, -0.969583, 0.0504095, 0.196007, -0.84146, 0.290068, -0.0420867, -0.485108, -0.46942, 0.315375, 0.839292, -0.130357, 0.0433712, 0.484014, -0.468486, -0.314479, 0.840585, -0.130472, 0.306242, 0.465728, 0.36651, -0.457013, 0.50198, -0.0997396, -0.0420867, 0.485108, -0.46942, 0.315375, -0.839291, -0.130357, 0.457375, -0.500862, -0.0996412)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hxl8p"]
+albedo_texture = ExtResource("1_705mh")
+
+[node name="Rock" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_hs5mt")
+surface_material_override/0 = SubResource("StandardMaterial3D_jht15")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.96441, -0.264412, 1.15578e-08, 0, -4.37114e-08, -1, 0.264412, 0.96441, -4.21557e-08, 0, 0.0250221, -0.216735)
+mesh = SubResource("CapsuleMesh_hs5mt")
+surface_material_override/0 = SubResource("StandardMaterial3D_7xwfa")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D2"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D2/StaticBody3D"]
+transform = Transform3D(1.835, -2.98023e-08, 5.32907e-15, 8.9407e-08, 1, 2.13163e-14, 1.77636e-15, 0, 1.255, 0.210893, 0.0968399, 0.076668)
+shape = SubResource("ConvexPolygonShape3D_c0ok3")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.922552, 0.385874, -1.68671e-08, 0, -4.37114e-08, -1, -0.385874, 0.922552, -4.0326e-08, 0.380621, -0.275905, -0.00167584)
+material_override = SubResource("StandardMaterial3D_hxl8p")
+mesh = SubResource("CapsuleMesh_hs5mt")

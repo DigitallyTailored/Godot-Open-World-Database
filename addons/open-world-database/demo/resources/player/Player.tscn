@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://dndq0a8q5mofo"]
+[gd_scene load_steps=22 format=3 uid="uid://dndq0a8q5mofo"]
 
 [ext_resource type="Script" uid="uid://c8spk1p6h5e3e" path="res://addons/open-world-database/demo/resources/player/player.gd" id="1_b5nq1"]
 [ext_resource type="AudioStream" uid="uid://5miird7u0rtl" path="res://addons/open-world-database/demo/resources/sound/hit.wav" id="2_l2acf"]
@@ -15,7 +15,7 @@ radius = 0.3
 height = 1.5
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rb33l"]
-albedo_color = Color(0, 1, 0.898039, 1)
+albedo_color = Color(0.319297, 0.578269, 0.786291, 1)
 
 [sub_resource type="TextMesh" id="TextMesh_4m6vg"]
 text = ": D"
@@ -23,7 +23,13 @@ font_size = 1
 pixel_size = 0.3085
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_upmx8"]
-albedo_color = Color(0, 0, 0, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_1y1cw"]
+top_radius = 0.2
+bottom_radius = 0.2
+height = 0.1
+radial_segments = 6
+rings = 0
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_4m6vg"]
 height = 1.40356
@@ -33,7 +39,12 @@ radius = 0.254883
 size = Vector3(2, 2, 2)
 
 [sub_resource type="PrismMesh" id="PrismMesh_rb33l"]
-size = Vector3(0.1, 1, 0.1)
+size = Vector3(0.1, 1, 0.01)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1y1cw"]
+albedo_color = Color(0.518831, 0.755041, 0.828949, 1)
+metallic = 1.0
+roughness = 0.0
 
 [sub_resource type="Animation" id="Animation_upmx8"]
 length = 0.001
@@ -287,9 +298,29 @@ mesh = SubResource("CapsuleMesh_rb33l")
 surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="MeshInstance3D"]
-transform = Transform3D(1.31134e-07, 1, 0, -1, 1.31134e-07, 0, 0, 0, 1, 0.0505134, 0.21502, 0.314572)
+transform = Transform3D(1.31134e-07, 1, 0, -0.99738, 1.30791e-07, 0.072333, 0.072333, -9.48531e-09, 0.99738, 0.0505134, 0.316393, 0.294418)
 mesh = SubResource("TextMesh_4m6vg")
 surface_material_override/0 = SubResource("StandardMaterial3D_upmx8")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="MeshInstance3D"]
+transform = Transform3D(-0.242809, -0.965926, 0.0896156, 0.970011, -0.242809, 0.0110683, 0.0110684, 0.0896156, 0.995915, -0.0665392, 0.626517, 0.0269584)
+mesh = SubResource("CylinderMesh_1y1cw")
+surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
+
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="MeshInstance3D"]
+transform = Transform3D(-0.803233, -0.516653, 0.296456, 0.5746, -0.803233, 0.157006, 0.157006, 0.296456, 0.942053, -0.13819, 0.532322, 0.0529284)
+mesh = SubResource("CylinderMesh_1y1cw")
+surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="MeshInstance3D"]
+transform = Transform3D(0.34632, -0.933896, 0.0888894, 0.937231, 0.348553, 0.0104717, -0.0407622, 0.0796833, 0.995986, 0.0573583, 0.616355, 0.0218217)
+mesh = SubResource("CylinderMesh_1y1cw")
+surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="MeshInstance3D"]
+transform = Transform3D(0.813706, -0.566482, -0.130308, 0.573724, 0.818713, 0.0234506, 0.0934003, -0.0938426, 0.991196, 0.140438, 0.549054, 0.0466609)
+mesh = SubResource("CylinderMesh_1y1cw")
+surface_material_override/0 = SubResource("StandardMaterial3D_rb33l")
 
 [node name="CameraPivot" type="Node3D" parent="."]
 
@@ -311,13 +342,14 @@ shape = SubResource("BoxShape3D_upmx8")
 [node name="Sword" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.447056, 0.182493, 0)
 mesh = SubResource("PrismMesh_rb33l")
+surface_material_override/0 = SubResource("StandardMaterial3D_1y1cw")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
 &"": SubResource("AnimationLibrary_d2yuf")
 }
+playback_default_blend_time = 0.5
 speed_scale = 4.0
-next/idle = &"block"
 blend_times = [&"idle", &"RESET", 0.2, &"idle", &"attack", 0.2, &"idle", &"block", 0.2, &"idle", &"idle", 0.2, &"idle", &"run", 0.2]
 
 [node name="sfx" type="Node3D" parent="."]

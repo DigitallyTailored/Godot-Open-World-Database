@@ -1,8 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://csur415hhqfgi"]
+[gd_scene load_steps=11 format=3 uid="uid://csur415hhqfgi"]
 
 [ext_resource type="Script" uid="uid://dt40ew62lcx8f" path="res://addons/open-world-database/demo/resources/terrain/terrain.gd" id="1_r4ad7"]
 [ext_resource type="Material" uid="uid://gcfo5rj6r23d" path="res://addons/open-world-database/demo/resources/terrain/terrain.tres" id="2_gc4cx"]
 [ext_resource type="Texture2D" uid="uid://cnmlvrcird0q4" path="res://addons/open-world-database/demo/resources/terrain/textures/silt.jpg" id="3_gcoin"]
+[ext_resource type="Script" uid="uid://5ywsmy1i3jt6" path="res://addons/open-world-database/demo/resources/terrain/grass.gd" id="4_bsqx8"]
+[ext_resource type="Material" uid="uid://cspcfc047o0qw" path="res://addons/open-world-database/demo/resources/terrain/grass.tres" id="5_tmr3h"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_bsqx8"]
 size = Vector2(1000, 1000)
@@ -31,10 +33,9 @@ proximity_fade_distance = 0.11
 
 [node name="Terrain" type="Node3D"]
 script = ExtResource("1_r4ad7")
-terrain_size = Vector2i(64, 64)
-terrain_scale = Vector2(100, 100)
-height_scale = 5.0
-noise_frequency = 0.05
+terrain_size = Vector2i(128, 128)
+terrain_scale = Vector2(256, 256)
+noise_frequency = 0.025
 material = ExtResource("2_gc4cx")
 grass_level = 0.35
 rock_level = 0.95
@@ -50,6 +51,20 @@ surface_material_override/0 = SubResource("StandardMaterial3D_tmr3h")
 shape = SubResource("BoxShape3D_gcoin")
 
 [node name="Water" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.38941, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.878, 0)
 mesh = SubResource("PlaneMesh_tmr3h")
 surface_material_override/0 = SubResource("StandardMaterial3D_iuy40")
+
+[node name="Grass" type="Node3D" parent="." node_paths=PackedStringArray("terrain_generator", "camera")]
+script = ExtResource("4_bsqx8")
+grass_density = 10000
+grass_height_min = 0.5
+grass_height_max = 0.7
+grass_width = 0.05
+view_distance = 40.0
+min_terrain_height = 0.325
+max_chunks_per_frame = 1
+grass_shader = ExtResource("5_tmr3h")
+max_tilt_angle = 55.0
+terrain_generator = NodePath("..")
+camera = NodePath("../../../../../../../../../@Node3DEditor@12336/@HSplitContainer@11535/@HSplitContainer@11537/@VSplitContainer@11539/@Node3DEditorViewportContainer@11540/@Node3DEditorViewport@11587/@SubViewportContainer@11541/@SubViewport@11542/@Camera3D@11544")

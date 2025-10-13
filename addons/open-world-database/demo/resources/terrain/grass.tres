@@ -1,0 +1,33 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://cspcfc047o0qw"]
+
+[ext_resource type="Shader" uid="uid://dry1n43gkj64a" path="res://addons/open-world-database/demo/resources/terrain/grass.gdshader" id="1_ugcnx"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_ugcnx")
+shader_parameter/grass_color_base = Color(0.24973, 0.34, 0.2482, 1)
+shader_parameter/grass_color_tip = Color(0.13585, 0.3, 0.099, 1)
+shader_parameter/transmission_strength = 1.0
+shader_parameter/transmission_color = Color(0.285167, 0.59, 0.2242, 1)
+shader_parameter/transmission_falloff = 2.0
+shader_parameter/backlight_strength = 1.0
+shader_parameter/normal_tip_blend = 1.0
+shader_parameter/specular_strength = 0.2
+shader_parameter/roughness_base = 1.0
+shader_parameter/roughness_tip = 0.225
+shader_parameter/wind_strength = 0.2
+shader_parameter/wind_speed = 1.667
+shader_parameter/wave_size = 5.0
+shader_parameter/wind_direction = Vector2(1, 0)
+shader_parameter/variation_amount = 0.1
+shader_parameter/gust_strength = 0.4
+shader_parameter/turbulence = 0.6
+shader_parameter/blade_curve = 1.0
+shader_parameter/chunk_world_pos = Vector3(0, 0, 0)
+shader_parameter/chunk_size = 0.0
+shader_parameter/height_scale = 10.0
+shader_parameter/min_terrain_height = 0.3
+shader_parameter/water_level = 0.2
+shader_parameter/sand_level = 0.3
+shader_parameter/grass_level = 0.6
+shader_parameter/rock_level = 0.8

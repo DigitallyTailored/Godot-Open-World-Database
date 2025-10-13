@@ -77,6 +77,7 @@ func _ready():
 	animation.play("idle")
 	update_facial_expression()
 
+
 func update_facial_expression():
 	var new_expression = ":)"
 	
@@ -144,7 +145,6 @@ func update_camera_position():
 	camera.look_at(global_position + Vector3(0, camera_height * 0.5, 0), Vector3.UP)
 
 func _physics_process(delta):
-	
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
@@ -221,27 +221,31 @@ func update_animations(is_moving: bool, was_blocking: bool):
 	else:
 		new_state = "idle"
 	
-	# Only change animation and expression if state changed
+	# Determine what animation SHOULD be playing
+	var expected_animation = ""
+	match new_state:
+		"attack":
+			expected_animation = "attack"
+		"block":
+			expected_animation = "block"
+		"run":
+			expected_animation = "run"
+		"idle":
+			expected_animation = "idle"
+	
+	# ALWAYS check if the current animation matches what should be playing
+	# This fixes the issue where something else changes the animation
+	# not sure where this bug is coming from..
+	if animation.current_animation != expected_animation:
+		#print("Correcting animation mismatch: ", animation.current_animation, " -> ", expected_animation)
+		animation.play(expected_animation)
+	
+	# Update state only when it actually changes
 	if new_state != current_state:
 		previous_state = current_state
 		current_state = new_state
-		
-		# Handle animation changes
-		if current_state == "attack":
-			# Attack animation is handled in the attack() function
-			pass
-		elif current_state == "block":
-			if not was_blocking:  # Just started blocking
-				animation.play("block")
-		elif current_state == "run":
-			if animation.current_animation != "run":
-				animation.play("run")
-		else:  # idle
-			if animation.current_animation != "idle":
-				animation.play("idle")
-		
-		# Update facial expression when state changes
 		update_facial_expression()
+
 
 func attack():
 	if is_attacking or is_blocking:
@@ -276,7 +280,7 @@ func attack():
 	update_facial_expression()
 
 func collect_gem():
-	Particle.setup(self, position, Color.GREEN)
+	Particle.setup(self, position, Color.MAGENTA)
 	
 	$sfx/gem.pitch_scale = randf_range(1.9,2.1)
 	$sfx/gem.play()

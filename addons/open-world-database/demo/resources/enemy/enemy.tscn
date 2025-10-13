@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://bcawm62pxeile"]
+[gd_scene load_steps=20 format=3 uid="uid://bcawm62pxeile"]
 
 [ext_resource type="Script" uid="uid://sgdc34g7r8jt" path="res://addons/open-world-database/demo/resources/enemy/enemy.gd" id="1_5sikr"]
 [ext_resource type="AudioStream" uid="uid://5miird7u0rtl" path="res://addons/open-world-database/demo/resources/sound/hit.wav" id="2_ug6nj"]
@@ -31,54 +31,27 @@ radius = 0.275879
 [sub_resource type="BoxShape3D" id="BoxShape3D_ug6nj"]
 size = Vector3(2, 2, 2)
 
-[sub_resource type="PrismMesh" id="PrismMesh_5sikr"]
-size = Vector3(0.1, 1, 0.1)
-
 [sub_resource type="Animation" id="Animation_upmx8"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sword:position")
+tracks/0/path = NodePath("MeshInstance3D:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(-0.447056, 0.182493, 0)]
+"values": [Vector3(0.353569, 0, 0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
-tracks/1/path = NodePath("Sword:rotation")
+tracks/1/path = NodePath("MeshInstance3D:position")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0, 0, 0)]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("MeshInstance3D:rotation")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0.353569, 0, 0)]
-}
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("MeshInstance3D:position")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
@@ -87,103 +60,31 @@ tracks/3/keys = {
 
 [sub_resource type="Animation" id="Animation_4m6vg"]
 resource_name = "attack"
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sword:position")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.58, 0.966667),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"update": 0,
-"values": [Vector3(-0.447056, 0.182493, 0), Vector3(-0.759, 0.102, 0.771), Vector3(0.576, -0.123, 0.859), Vector3(-0.447056, 0.182493, 0)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Sword:rotation")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.58, 0.966667),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"update": 0,
-"values": [Vector3(0, 0, 0), Vector3(0.659734, 0.614356, 1.4591), Vector3(1.23342, 2.84955, 1.96132), Vector3(0, 0, 0)]
-}
 
 [sub_resource type="Animation" id="Animation_l2acf"]
 resource_name = "block"
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sword:position")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(-0.0158163, 0.502158, 0.548936)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Sword:rotation")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0, 0, -1.33467)]
-}
 
 [sub_resource type="Animation" id="Animation_1y1cw"]
 resource_name = "idle"
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sword:position")
+tracks/0/path = NodePath("MeshInstance3D:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(-0.447056, 0.182493, 0)]
+"values": [Vector3(0, 0, 0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
-tracks/1/path = NodePath("Sword:rotation")
+tracks/1/path = NodePath("MeshInstance3D:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0, 0, 0)]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("MeshInstance3D:position")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0, 0, 0)]
-}
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("MeshInstance3D:rotation")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
@@ -226,6 +127,14 @@ _data = {
 &"run": SubResource("Animation_ip1nt")
 }
 
+[sub_resource type="PrismMesh" id="PrismMesh_ug6nj"]
+size = Vector3(0.1, 1, 0.01)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_emtgy"]
+albedo_color = Color(0.518831, 0.755041, 0.828949, 1)
+metallic = 1.0
+roughness = 0.0
+
 [node name="Enemy" type="CharacterBody3D"]
 floor_max_angle = 1.0472
 script = ExtResource("1_5sikr")
@@ -258,16 +167,17 @@ transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, -0.178
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.8)
 shape = SubResource("BoxShape3D_ug6nj")
 
-[node name="Sword" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.447056, 0.182493, 0)
-mesh = SubResource("PrismMesh_5sikr")
-
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
 &"": SubResource("AnimationLibrary_d2yuf")
 }
 playback_default_blend_time = 0.2
 speed_scale = 4.0
+
+[node name="Sword" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.447056, 0.182493, 0)
+mesh = SubResource("PrismMesh_ug6nj")
+surface_material_override/0 = SubResource("StandardMaterial3D_emtgy")
 
 [node name="sfx" type="Node3D" parent="."]
 
