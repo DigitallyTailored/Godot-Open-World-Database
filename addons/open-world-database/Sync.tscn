@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://bb5brq5opvkol"]
-
-[ext_resource type="Script" uid="uid://dexedq5whos7q" path="res://addons/open-world-database/src/sync.gd" id="1_2m875"]
-
-[node name="Sync" type="Node"]
-script = ExtResource("1_2m875")
