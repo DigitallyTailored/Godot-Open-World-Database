@@ -1,9 +1,10 @@
-# open-world-database-gd
+# open-world-database.gd
 @tool
 extends Node
 class_name OpenWorldDatabase
 
 enum Size { SMALL, MEDIUM, LARGE, ALWAYS_LOADED }
+enum NetworkMode { HOST, PEER, STANDALONE }
 
 # Constants
 const UID_SEPARATOR = "-"
@@ -19,6 +20,11 @@ const SKIP_PROPERTIES = [
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
 @export var chunk_load_range: int = 3
 @export var debug_enabled: bool = false
+
+# Network integration
+@export_group("Network Settings")
+@export var auto_network_enabled: bool = true
+@export var force_network_mode: NetworkMode = NetworkMode.STANDALONE
 
 @export_tool_button("debug info", "Debug") var debug_action = debug
 
@@ -38,6 +44,10 @@ var batch_processor: BatchProcessor
 var is_loading: bool = false
 var nodes_being_unloaded: Dictionary = {} # uid -> true
 
+# Network state
+var current_network_mode: NetworkMode = NetworkMode.STANDALONE
+var _multiplayer_connected: bool = false
+
 func debug_log(message: String, value = null):
 	if debug_enabled:
 		if value != null:
@@ -49,10 +59,114 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		get_tree().auto_accept_quit = false
 	
+	# Setup multiplayer signal connections for network mode detection
+	_setup_multiplayer_signals()
+	
 	reset()
 	is_loading = true
 	database.load_database()
 	is_loading = false
+	
+	# Initial network mode determination
+	_update_network_mode()
+	
+	# Register with Syncer autoload if it exists
+	call_deferred("_register_with_syncer")
+
+func _register_with_syncer():
+	Syncer.register_owdb(self)
+	debug_log("OWDB registered with Syncer")
+	
+func _exit_tree():
+	# Unregister from Syncer when OWDB is destroyed
+	Syncer.unregister_owdb()
+	debug_log("OWDB unregistered from Syncer")
+		
+func _setup_multiplayer_signals():
+	if not multiplayer:
+		return
+	
+	if not multiplayer.connected_to_server.is_connected(_on_connected_to_server):
+		multiplayer.connected_to_server.connect(_on_connected_to_server)
+	if not multiplayer.connection_failed.is_connected(_on_connection_failed):
+		multiplayer.connection_failed.connect(_on_connection_failed)
+	if not multiplayer.server_disconnected.is_connected(_on_server_disconnected):
+		multiplayer.server_disconnected.connect(_on_server_disconnected)
+
+func _on_connected_to_server():
+	debug_log("OWDB: Connected to server, switching to PEER mode")
+	_multiplayer_connected = true
+	_update_network_mode()
+	_handle_mode_transition_to_peer()
+
+func _on_connection_failed():
+	debug_log("OWDB: Connection failed, staying in current mode")
+
+func _on_server_disconnected():
+	debug_log("OWDB: Disconnected from server, switching to HOST mode")
+	_multiplayer_connected = false
+	_update_network_mode()
+	_handle_mode_transition_to_host()
+
+func _update_network_mode():
+	var new_mode = _determine_network_mode()
+	
+	if new_mode != current_network_mode:
+		debug_log("OWDB: Network mode changing from ", str(current_network_mode) + " to " + str(new_mode))
+		current_network_mode = new_mode
+		
+		# Notify chunk manager of mode change
+		if chunk_manager:
+			chunk_manager.set_network_mode(current_network_mode)
+
+func _determine_network_mode() -> NetworkMode:
+	# Check for forced mode first
+	if force_network_mode != NetworkMode.STANDALONE:
+		return force_network_mode
+	
+	# Auto-detect based on multiplayer state if enabled
+	if auto_network_enabled and multiplayer and multiplayer.has_multiplayer_peer():
+		if multiplayer.is_server():
+			return NetworkMode.HOST
+		else:
+			return NetworkMode.PEER
+	
+	# Default to standalone/host mode
+	return NetworkMode.HOST
+
+func _handle_mode_transition_to_peer():
+	# When becoming a peer, clear local chunk management
+	# The host will now drive what gets loaded/unloaded
+	is_loading = true
+	
+	# Clear all loaded chunks but keep the node registry
+	chunk_manager.clear_autonomous_chunk_management()
+	
+	# Keep position tracking but disable autonomous loading
+	debug_log("OWDB: Transitioned to PEER mode - chunk loading now controlled by host")
+	is_loading = false
+
+func _handle_mode_transition_to_host():
+	# When becoming host again, resume normal chunk management
+	is_loading = true
+	
+	# Re-enable autonomous chunk management
+	chunk_manager.enable_autonomous_chunk_management()
+	
+	# Force update all registered positions to reload appropriate chunks
+	chunk_manager.force_refresh_all_positions()
+	
+	debug_log("OWDB: Transitioned to HOST mode - resuming autonomous chunk management")
+	is_loading = false
+
+func get_network_mode() -> NetworkMode:
+	return current_network_mode
+
+func is_network_host() -> bool:
+	return current_network_mode == NetworkMode.HOST
+
+func is_network_peer() -> bool:
+	return current_network_mode == NetworkMode.PEER
 
 func reset():
 	is_loading = true
@@ -113,7 +227,6 @@ func remove_from_chunk_lookup(uid: String, position: Vector3, size: float):
 		chunk_lookup[size_cat][chunk_pos].erase(uid)
 		if chunk_lookup[size_cat][chunk_pos].is_empty():
 			chunk_lookup[size_cat].erase(chunk_pos)
-
 
 func get_size_category(node_size: float) -> Size:
 	if node_size == 0.0:
@@ -248,6 +361,7 @@ func _cleanup_unload_tracking(uid: String):
 
 func debug():
 	print("=== OWDB DEBUG INFO ===")
+	print("Network Mode: ", current_network_mode)
 	print("Nodes currently loaded: ", get_currently_loaded_nodes())
 	print("Total nodes in database: ", get_total_database_nodes())
 	print("Active OWDBPosition nodes: ", get_active_position_count())

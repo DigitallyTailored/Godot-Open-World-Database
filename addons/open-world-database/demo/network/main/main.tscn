@@ -1,0 +1,79 @@
+[gd_scene load_steps=10 format=3 uid="uid://c7vmppndoqev5"]
+
+[ext_resource type="Script" uid="uid://ckgq8twwf3wk1" path="res://addons/open-world-database/demo/network/main/main.gd" id="1_itjsd"]
+[ext_resource type="Script" uid="uid://c51vw17uqaabu" path="res://addons/open-world-database/demo/network/main/fps.gd" id="2_bpdpu"]
+[ext_resource type="Script" uid="uid://b46e3mat8dx5" path="res://addons/open-world-database/src/open_world_database.gd" id="2_x0vdw"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wi4fq"]
+sky_top_color = Color(0.077850975, 0.44443423, 0.82337976, 1)
+sky_horizon_color = Color(0.34764534, 0.43929112, 0.5340275, 1)
+ground_bottom_color = Color(0, 0, 0, 1)
+ground_horizon_color = Color(0.34764534, 0.43929112, 0.5340275, 1)
+
+[sub_resource type="Sky" id="Sky_bpdpu"]
+sky_material = SubResource("ProceduralSkyMaterial_wi4fq")
+
+[sub_resource type="Environment" id="Environment_l13gw"]
+background_mode = 2
+sky = SubResource("Sky_bpdpu")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_itjsd"]
+size = Vector3(1000, 0.1, 1000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shys2"]
+albedo_color = Color(0.22526717, 0.514487, 0.43196374, 1)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wi4fq"]
+points = PackedVector3Array(-500, -0.05, -500, -500, 0.05, -500, 500, -0.05, -500, -500, -0.05, 500, -500, 0.05, 500, 500, 0.05, -500, 500, -0.05, 500, 500, 0.05, 500)
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_itjsd")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_l13gw")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 1.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 0)
+mesh = SubResource("BoxMesh_itjsd")
+surface_material_override/0 = SubResource("StandardMaterial3D_shys2")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D"]
+shape = SubResource("ConvexPolygonShape3D_wi4fq")
+
+[node name="FPS" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "0"
+script = ExtResource("2_bpdpu")
+
+[node name="Host" type="Button" parent="."]
+offset_top = 51.0
+offset_right = 44.0
+offset_bottom = 82.0
+text = "Host"
+
+[node name="Join" type="Button" parent="."]
+offset_top = 109.0
+offset_right = 38.0
+offset_bottom = 140.0
+text = "Join"
+
+[node name="OpenWorldDatabase" type="Node" parent="."]
+script = ExtResource("2_x0vdw")
+chunk_sizes = Array[float]([2.0, 4.0, 8.0])
+chunk_load_range = 1
+metadata/_custom_type_script = "uid://b46e3mat8dx5"
+
+[node name="SyncNodes" type="Node" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7532306, 0.65775657, 0, -0.65775657, 0.7532306, 0, 17.21387, 27.759407)

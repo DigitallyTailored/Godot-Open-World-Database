@@ -11,14 +11,18 @@ config_version=5
 [application]
 
 config/name="open-world-database"
-run/main_scene="uid://bjfrcs1obghq6"
+run/main_scene="uid://c7vmppndoqev5"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+Syncer="*res://addons/open-world-database/src/network/Syncer.gd"
+
 [display]
 
-window/size/viewport_width=1536
-window/size/viewport_height=864
+window/size/viewport_width=800
+window/size/viewport_height=600
 
 [dotnet]
 

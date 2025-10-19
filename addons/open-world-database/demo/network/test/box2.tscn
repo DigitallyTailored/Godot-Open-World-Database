@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://cg5wtfx6bfyfi"]
+
+[ext_resource type="Script" uid="uid://buw88g84cjbwm" path="res://addons/open-world-database/demo/network/test/box_2.gd" id="1_jyvgy"]
+[ext_resource type="PackedScene" uid="uid://vl3ek4tfes44" path="res://addons/open-world-database/src/network/sync/Sync.tscn" id="2_unrwe"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_oyhfb"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c361l"]
+albedo_color = Color(1, 0.583333, 0, 1)
+
+[node name="Box2" type="Node3D"]
+script = ExtResource("1_jyvgy")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_oyhfb")
+surface_material_override/0 = SubResource("StandardMaterial3D_c361l")
+
+[node name="Sync" parent="." instance=ExtResource("2_unrwe")]
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.866198, 0)
+visible = false
+pixel_size = 0.0013
+billboard = 1
+fixed_size = true
+modulate = Color(1, 0.49, 0.49, 1)
+text = "0_0"

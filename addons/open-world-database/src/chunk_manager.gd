@@ -10,6 +10,11 @@ var position_required_chunks: Dictionary = {} # position_id -> Dictionary of req
 var pending_chunk_operations: Dictionary = {} # chunk_key -> "load"/"unload"
 var batch_callback_registered: bool = false
 
+# Network integration
+var _syncer_notified_entities: Dictionary = {} # entity_name -> true (track what we've told Syncer about)
+var _autonomous_chunk_management: bool = true
+var _current_network_mode: OpenWorldDatabase.NetworkMode = OpenWorldDatabase.NetworkMode.HOST
+
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
 	reset()
@@ -21,7 +26,30 @@ func reset():
 	position_registry.clear()
 	position_required_chunks.clear()
 	pending_chunk_operations.clear()
+	_syncer_notified_entities.clear()
+	_autonomous_chunk_management = true
 	batch_callback_registered = false
+
+func set_network_mode(mode: OpenWorldDatabase.NetworkMode):
+	_current_network_mode = mode
+	owdb.debug_log("ChunkManager: Network mode set to ", mode)
+
+func clear_autonomous_chunk_management():
+	_autonomous_chunk_management = false
+	# Clear pending operations when transitioning to peer mode
+	pending_chunk_operations.clear()
+	owdb.debug_log("ChunkManager: Autonomous chunk management disabled (PEER mode)")
+
+func enable_autonomous_chunk_management():
+	_autonomous_chunk_management = true
+	owdb.debug_log("ChunkManager: Autonomous chunk management enabled (HOST mode)")
+
+func force_refresh_all_positions():
+	# Force all registered positions to update their chunks
+	for position_id in position_registry:
+		var pos_node = position_registry[position_id]
+		if pos_node and is_instance_valid(pos_node):
+			update_position_chunks(position_id, pos_node.global_position)
 
 func register_position(position_node: OWDBPosition) -> String:
 	var position_id = str(position_node.get_instance_id())
@@ -62,6 +90,7 @@ func update_position_chunks(position_id: String, position: Vector3):
 	if not position_registry.has(position_id):
 		return
 	
+	# In peer mode, only update requirements but don't trigger autonomous loading
 	_ensure_always_loaded_chunk()
 	
 	var sizes = OpenWorldDatabase.Size.values()
@@ -93,12 +122,14 @@ func update_position_chunks(position_id: String, position: Vector3):
 	
 	position_required_chunks[position_id] = new_required_chunks
 	
-	# Clean up any invalid operations after chunk updates
-	owdb.batch_processor.cleanup_invalid_operations()
-	
-	if not batch_callback_registered:
-		owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
-		batch_callback_registered = true
+	# Only proceed with batch operations in autonomous mode (HOST)
+	if _autonomous_chunk_management:
+		# Clean up any invalid operations after chunk updates
+		owdb.batch_processor.cleanup_invalid_operations()
+		
+		if not batch_callback_registered:
+			owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
+			batch_callback_registered = true
 
 func _calculate_required_chunks_for_size(size: OpenWorldDatabase.Size, position: Vector3) -> Dictionary:
 	var chunk_size = owdb.chunk_sizes[size]
@@ -117,8 +148,9 @@ func _add_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, p
 	
 	if not chunk_requirements.has(chunk_key):
 		chunk_requirements[chunk_key] = {}
-		# This is the first requirement for this chunk - load it
-		_queue_chunk_operation(size, chunk_pos, "load")
+		# Only queue loading in autonomous mode
+		if _autonomous_chunk_management:
+			_queue_chunk_operation(size, chunk_pos, "load")
 	
 	chunk_requirements[chunk_key][position_id] = true
 
@@ -133,26 +165,70 @@ func _remove_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i
 	# If no positions need this chunk anymore, unload it
 	if chunk_requirements[chunk_key].is_empty():
 		chunk_requirements.erase(chunk_key)
-		if size != OpenWorldDatabase.Size.ALWAYS_LOADED:
+		if size != OpenWorldDatabase.Size.ALWAYS_LOADED and _autonomous_chunk_management:
 			_queue_chunk_operation(size, chunk_pos, "unload")
 
 func _on_batch_complete():
+	var newly_loaded_entities = []
+	var newly_unloaded_entities = []
+	
 	for chunk_key in pending_chunk_operations:
 		var size = int(chunk_key.x)
 		var chunk_pos = Vector2i(chunk_key.y, chunk_key.z)
 		var operation = pending_chunk_operations[chunk_key]
 		
 		if operation == "unload":
+			# Track entities that are being unloaded
+			if owdb.chunk_lookup.has(size) and owdb.chunk_lookup[size].has(chunk_pos):
+				for uid in owdb.chunk_lookup[size][chunk_pos]:
+					if owdb.loaded_nodes_by_uid.has(uid):
+						var node = owdb.loaded_nodes_by_uid[uid]
+						if node.has_node("Sync"):
+							newly_unloaded_entities.append(node.name)
+			
 			if loaded_chunks.has(size):
 				loaded_chunks[size].erase(chunk_pos)
+				
 		elif operation == "load":
+			# Track entities that are being loaded
+			if owdb.chunk_lookup.has(size) and owdb.chunk_lookup[size].has(chunk_pos):
+				for uid in owdb.chunk_lookup[size][chunk_pos]:
+					if owdb.node_monitor.stored_nodes.has(uid):
+						newly_loaded_entities.append(uid)
+			
 			if not loaded_chunks.has(size):
 				loaded_chunks[size] = {}
 			loaded_chunks[size][chunk_pos] = true
 	
 	pending_chunk_operations.clear()
 	
+	# Only notify Syncer in HOST mode
+	if _current_network_mode == OpenWorldDatabase.NetworkMode.HOST:
+		_notify_syncer_of_changes(newly_loaded_entities, newly_unloaded_entities)
+	
 	owdb.debug_log("Chunk states updated after batch completion")
+
+func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array):
+	print("Notifying Syncer of chunk changes - loaded: ", loaded_entities.size(), " unloaded: ", unloaded_entities.size())
+	
+	# For newly loaded entities, make them available but let Syncer determine visibility per peer
+	for uid in loaded_entities:
+		if owdb.loaded_nodes_by_uid.has(uid):
+			var node = owdb.loaded_nodes_by_uid[uid]
+			if node and node.has_node("Sync"):
+				var entity_name = node.name
+				_syncer_notified_entities[entity_name] = true
+				print("Notified Syncer about loaded entity: ", entity_name)
+	
+	# For unloaded entities, hide them from all peers
+	for entity_name in unloaded_entities:
+		if _syncer_notified_entities.has(entity_name):
+			Syncer.entity_all_visible(entity_name, false)
+			_syncer_notified_entities.erase(entity_name)
+			print("Hiding unloaded entity: ", entity_name)
+	
+	# Always trigger a visibility update when chunks change
+	Syncer._update_entity_visibility_from_owdb()
 
 func _queue_chunk_operation(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, operation: String):
 	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)
@@ -201,5 +277,7 @@ func get_chunk_requirement_info() -> Dictionary:
 	return {
 		"active_positions": position_registry.size(),
 		"total_chunks_required": total_chunks_required,
-		"chunks_loaded": chunks_loaded
+		"chunks_loaded": chunks_loaded,
+		"autonomous_management": _autonomous_chunk_management,
+		"network_mode": _current_network_mode
 	}

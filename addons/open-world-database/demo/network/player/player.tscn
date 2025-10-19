@@ -1,0 +1,27 @@
+[gd_scene load_steps=6 format=3 uid="uid://ccswmn0iyc15v"]
+
+[ext_resource type="Script" uid="uid://bu7l7jvw7f6gf" path="res://addons/open-world-database/demo/network/player/player.gd" id="1_8afob"]
+[ext_resource type="PackedScene" uid="uid://vl3ek4tfes44" path="res://addons/open-world-database/src/network/sync/Sync.tscn" id="2_dovo2"]
+[ext_resource type="Script" uid="uid://buh6cddjkykg2" path="res://addons/open-world-database/src/owdb_position.gd" id="3_qb5jb"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dovo2"]
+
+[sub_resource type="TextMesh" id="TextMesh_8afob"]
+text = "p"
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_8afob")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_dovo2")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.32366e-07, 0, -11.1, 0, 11.1, 0, 11.1, 0, 1.32366e-07, 0, 1.36126, 0)
+mesh = SubResource("TextMesh_8afob")
+
+[node name="Sync" parent="." instance=ExtResource("2_dovo2")]
+
+[node name="OWDBPosition" type="Node3D" parent="."]
+script = ExtResource("3_qb5jb")
+metadata/_custom_type_script = "uid://buh6cddjkykg2"
