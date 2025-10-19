@@ -269,7 +269,7 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		scene,
 		parent_path,
 		func(entity: Node) -> void:
-			entity.name = node_name
+			#entity.name = node_name
 			entity_sync_setup(entity, scene, position, rotation, peer_id, initial_variables)
 	)
 
