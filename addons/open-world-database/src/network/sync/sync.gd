@@ -33,7 +33,8 @@ func _ready():
 	parent_path = _get_parent_path()
 	is_pre_existing = _check_if_pre_existing()
 	
-	Syncer.register_sync_node(self)
+	# Register with Syncer (Syncer handles the networking registration)
+	Syncer.register_node(parent, parent_scene, peer_id, synced_values, self)
 	$Label3D.text = parent_name
 	
 	if !parent.has_method("_host_process"):
@@ -271,7 +272,8 @@ func output(variables_in) -> void:
 			synced_values[key] = variables_in[key]
 	
 	if not sync_data.is_empty():
-		Syncer.sync_variables(self, sync_data, false)
+		# Delegate to Syncer instead of calling sync_variables directly
+		Syncer.sync_variables(parent_name, sync_data, false)
 
 func output_timed(variables_in, custom_interval: int = -1) -> void:
 	var interval_to_use = custom_interval if custom_interval > 0 else interval
@@ -284,7 +286,6 @@ func output_timed(variables_in, custom_interval: int = -1) -> void:
 		throttled_last_send[key] = current_time
 
 func variables_receive(variables_in: Dictionary) -> void:
-	#print(multiplayer.get_unique_id(), ": ", parent_name, " ", variables_in)
 	var converted_variables = _convert_short_keys_to_properties(variables_in)
 	
 	for key in converted_variables:
@@ -299,6 +300,6 @@ func emit_signal_recieved_data(variables_in: Dictionary) -> void:
 	input.emit(variables_in)
 
 func _exit_tree() -> void:
-	Syncer.unregister_sync_node(self)
+	# Syncer will handle unregistration via tree_exiting signal
 	if watch_timer:
 		watch_timer.queue_free()

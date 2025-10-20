@@ -215,8 +215,14 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 	for uid in loaded_entities:
 		if owdb.loaded_nodes_by_uid.has(uid):
 			var node = owdb.loaded_nodes_by_uid[uid]
-			if node and node.has_node("Sync"):
+			if node and node is Node3D:  # Register ALL Node3D entities, not just those with Sync
 				var entity_name = node.name
+				var sync_component = node.find_child("Sync") if node.has_node("Sync") else null
+				
+				# Register with Syncer whether it has a Sync component or not
+				if not Syncer.is_node_registered(node):
+					Syncer.register_node(node, node.scene_file_path, 1, {}, sync_component)
+				
 				_syncer_notified_entities[entity_name] = true
 				print("Notified Syncer about loaded entity: ", entity_name)
 	
@@ -229,6 +235,7 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 	
 	# Always trigger a visibility update when chunks change
 	Syncer._update_entity_visibility_from_owdb()
+
 
 func _queue_chunk_operation(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, operation: String):
 	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)

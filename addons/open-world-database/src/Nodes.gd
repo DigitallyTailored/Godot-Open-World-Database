@@ -182,6 +182,10 @@ func _process_next_batch() -> void:
 				callback.call(entity_instance)
 				
 			parent_node.add_child(entity_instance)
+			
+			if not Syncer.is_node_registered(entity_instance):
+				Syncer.register_node(entity_instance, entity_path, 1, {}, null)
+				
 			loaded_count += 1
 			
 			# Store reference to loaded entity
