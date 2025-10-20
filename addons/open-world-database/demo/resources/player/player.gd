@@ -237,7 +237,7 @@ func update_animations(is_moving: bool, was_blocking: bool):
 	# This fixes the issue where something else changes the animation
 	# not sure where this bug is coming from..
 	if animation.current_animation != expected_animation:
-		#print("Correcting animation mismatch: ", animation.current_animation, " -> ", expected_animation)
+		#print(multiplayer.get_unique_id(), ": Correcting animation mismatch: ", animation.current_animation, " -> ", expected_animation)
 		animation.play(expected_animation)
 	
 	# Update state only when it actually changes

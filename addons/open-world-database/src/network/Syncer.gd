@@ -39,7 +39,7 @@ class SyncNodeData:
 
 func _ready() -> void:
 	nodes = load("res://addons/open-world-database/src/Nodes.gd").new(self)
-	print("SYNCER READY")
+	print(multiplayer.get_unique_id(), ": SYNCER READY")
 	for key in transform_mappings:
 		reverse_mappings[transform_mappings[key]] = key
 
@@ -52,7 +52,7 @@ func register_owdb(owdb_instance: OpenWorldDatabase):
 		unregister_owdb()
 	
 	owdb = owdb_instance
-	print("SYNCER: OWDB registered - integration active")
+	print(multiplayer.get_unique_id(), ": SYNCER: OWDB registered - integration active")
 	
 	if owdb.batch_processor and not owdb.batch_processor.batch_complete_callbacks.has(_on_owdb_batch_complete):
 		owdb.batch_processor.add_batch_complete_callback(_on_owdb_batch_complete)
@@ -61,7 +61,7 @@ func unregister_owdb():
 	if not owdb:
 		return
 	
-	print("SYNCER: OWDB unregistered")
+	print(multiplayer.get_unique_id(), ": SYNCER: OWDB unregistered")
 	
 	if owdb.batch_processor and owdb.batch_processor.batch_complete_callbacks.has(_on_owdb_batch_complete):
 		owdb.batch_processor.remove_batch_complete_callback(_on_owdb_batch_complete)
@@ -81,83 +81,167 @@ func _update_new_peer_visibility(peer_id: int):
 	if not peer_owdb_position or not is_instance_valid(peer_owdb_position):
 		return
 	
-	var peer_position = peer_owdb_position.global_position
-	
-	for node_name in _sync_nodes:
-		var sync_data = _sync_nodes[node_name]
-		if not sync_data or not is_instance_valid(sync_data.parent):
-			continue
-		
-		if sync_data.peer_id == peer_id:
-			continue
-		
-		var entity_position = sync_data.parent.global_position if sync_data.parent is Node3D else Vector3.ZERO
-		var should_see = _should_peer_see_entity(peer_id, entity_position, peer_position)
-		
-		if should_see:
-			entity_peer_visible(peer_id, node_name, true)
-			print("Making entity ", node_name, " visible to peer ", peer_id)
+	# Use the same chunk-based logic instead of making everything visible
+	_update_single_peer_visibility(peer_id)
 
 func _update_entity_visibility_from_owdb():
 	if not multiplayer.is_server() or not owdb:
 		return
 	
-	print("Updating entity visibility from OWDB...")
+	print(multiplayer.get_unique_id(), ": Updating entity visibility from OWDB chunks...")
 	
 	for peer_id in _peer_positions:
 		var owdb_position = _peer_positions[peer_id]
 		if not owdb_position or not is_instance_valid(owdb_position):
 			continue
 		
-		var peer_position = owdb_position.global_position
+		# Get all entities that should be visible (both sync nodes and OWDB entities)
+		# Use a set to avoid duplicates
+		var all_entities_to_check = {}
 		
+		# Add registered sync nodes
+		for node_name in _sync_nodes:
+			var sync_data = _sync_nodes[node_name]
+			if sync_data and is_instance_valid(sync_data.parent):
+				all_entities_to_check[node_name] = sync_data.parent
+		
+		# Add OWDB entities (but avoid duplicates with sync nodes)
 		for uid in owdb.loaded_nodes_by_uid:
 			var node = owdb.loaded_nodes_by_uid[uid]
-			if not node:
+			if node and not all_entities_to_check.has(node.name):
+				all_entities_to_check[node.name] = node
+		
+		# Process each entity once
+		for entity_name in all_entities_to_check:
+			var entity_node = all_entities_to_check[entity_name]
+			
+			# Skip self
+			if _sync_nodes.has(entity_name) and _sync_nodes[entity_name].peer_id == peer_id:
 				continue
 			
-			var entity_name = node.name
-			var node_position = node.global_position if node is Node3D else Vector3.ZERO
-			
-			var should_see = _should_peer_see_entity(peer_id, node_position, peer_position)
+			var should_see = _should_peer_see_entity_via_chunks(peer_id, entity_node)
 			var currently_visible = peer_has_node(peer_id, entity_name)
 			
 			if should_see and not currently_visible:
 				entity_peer_visible(peer_id, entity_name, true)
-				print("Making OWDB entity ", entity_name, " visible to peer ", peer_id)
+				if _sync_nodes.has(entity_name):
+					print(multiplayer.get_unique_id(), ": Making sync entity ", entity_name, " visible to peer ", peer_id)
+				else:
+					print(multiplayer.get_unique_id(), ": Making OWDB entity ", entity_name, " visible to peer ", peer_id)
 			elif not should_see and currently_visible:
 				entity_peer_visible(peer_id, entity_name, false)
-				print("Hiding OWDB entity ", entity_name, " from peer ", peer_id)
+				if _sync_nodes.has(entity_name):
+					print(multiplayer.get_unique_id(), ": Hiding sync entity ", entity_name, " from peer ", peer_id)
+				else:
+					print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
-func _should_peer_see_entity(peer_id: int, entity_pos: Vector3, peer_pos: Vector3) -> bool:
-	if not owdb:
+# NEW: Update visibility for a single peer when they move
+func _update_single_peer_visibility(peer_id: int):
+	if not multiplayer.is_server() or not owdb:
+		return
+	
+	if not _peer_positions.has(peer_id):
+		return
+	
+	print(multiplayer.get_unique_id(), ": Updating visibility for peer ", peer_id, " due to position change...")
+	
+	# Get all entities that could be visible
+	var all_entities_to_check = {}
+	
+	# Add registered sync nodes
+	for node_name in _sync_nodes:
+		var sync_data = _sync_nodes[node_name]
+		if sync_data and is_instance_valid(sync_data.parent):
+			all_entities_to_check[node_name] = sync_data.parent
+	
+	# Add OWDB entities (but avoid duplicates with sync nodes)
+	for uid in owdb.loaded_nodes_by_uid:
+		var node = owdb.loaded_nodes_by_uid[uid]
+		if node and not all_entities_to_check.has(node.name):
+			all_entities_to_check[node.name] = node
+	
+	# Process each entity for this specific peer
+	for entity_name in all_entities_to_check:
+		var entity_node = all_entities_to_check[entity_name]
+		
+		# Skip self
+		if _sync_nodes.has(entity_name) and _sync_nodes[entity_name].peer_id == peer_id:
+			continue
+		
+		var should_see = _should_peer_see_entity_via_chunks(peer_id, entity_node)
+		var currently_visible = peer_has_node(peer_id, entity_name)
+		
+		if should_see and not currently_visible:
+			entity_peer_visible(peer_id, entity_name, true)
+			if _sync_nodes.has(entity_name):
+				print(multiplayer.get_unique_id(), ": Making sync entity ", entity_name, " visible to peer ", peer_id)
+			else:
+				print(multiplayer.get_unique_id(), ": Making OWDB entity ", entity_name, " visible to peer ", peer_id)
+		elif not should_see and currently_visible:
+			entity_peer_visible(peer_id, entity_name, false)
+			if _sync_nodes.has(entity_name):
+				print(multiplayer.get_unique_id(), ": Hiding sync entity ", entity_name, " from peer ", peer_id)
+			else:
+				print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
+
+# FIXED: Use OWDB's chunk system with proper edge case handling
+func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node3D) -> bool:
+	if not owdb or not entity_node:
 		return true
 	
-	var distance = entity_pos.distance_to(peer_pos)
-	var max_chunk_size = owdb.chunk_sizes[owdb.chunk_sizes.size() - 1]
-	var max_distance = max_chunk_size * owdb.chunk_load_range * 1.5
+	# Get the peer's position
+	var owdb_position = _peer_positions.get(peer_id)
+	if not owdb_position or not is_instance_valid(owdb_position):
+		return false
 	
-	return distance <= max_distance
+	var peer_position_id = owdb_position.get_position_id()
+	if peer_position_id == "":
+		return false
+	
+	# Get the chunks required by this peer
+	var peer_required_chunks = owdb.chunk_manager.position_required_chunks.get(peer_position_id, {})
+	if peer_required_chunks.is_empty():
+		return false
+	
+	# Check if the entity is in any of the chunks that this peer should see
+	var entity_position = entity_node.global_position if entity_node is Node3D else Vector3.ZERO
+	var entity_size = NodeUtils.calculate_node_size(entity_node) if entity_node is Node3D else 0.0
+	var entity_size_category = owdb.get_size_category(entity_size)
+	
+	# ALWAYS_LOADED entities should always be visible
+	if entity_size_category == OpenWorldDatabase.Size.ALWAYS_LOADED:
+		return peer_required_chunks.has(OpenWorldDatabase.Size.ALWAYS_LOADED)
+	
+	# FIXED: Proper chunk size calculation with bounds checking
+	if entity_size_category >= owdb.chunk_sizes.size():
+		# If size category is out of bounds, treat as ALWAYS_LOADED
+		return peer_required_chunks.has(OpenWorldDatabase.Size.ALWAYS_LOADED)
+	
+	var chunk_size = owdb.chunk_sizes[entity_size_category]
+	var entity_chunk_pos = NodeUtils.get_chunk_position(entity_position, chunk_size)
+	
+	# Check if the peer requires the chunk that contains this entity
+	var required_chunks_for_size = peer_required_chunks.get(entity_size_category, {})
+	return required_chunks_for_size.has(entity_chunk_pos)
 
 func register_peer_position(peer_id: int, owdb_position: OWDBPosition):
 	_peer_positions[peer_id] = owdb_position
-	print("Registered OWDBPosition for peer: ", peer_id)
+	print(multiplayer.get_unique_id(), ": Registered OWDBPosition for peer: ", peer_id)
 
 func unregister_peer_position(peer_id: int):
 	_peer_positions.erase(peer_id)
-	print("Unregistered OWDBPosition for peer: ", peer_id)
+	print(multiplayer.get_unique_id(), ": Unregistered OWDBPosition for peer: ", peer_id)
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("ui_accept"):
-		print("sync_nodes: ", _sync_nodes.keys())
-		print("peer_nodes_observing: ", _peer_nodes_observing)
-		print("peer_positions: ", _peer_positions.keys())
-		print("owdb_registered: ", owdb != null)
+		print(multiplayer.get_unique_id(), ": sync_nodes: ", _sync_nodes.keys())
+		print(multiplayer.get_unique_id(), ": peer_nodes_observing: ", _peer_nodes_observing)
+		print(multiplayer.get_unique_id(), ": peer_positions: ", _peer_positions.keys())
+		print(multiplayer.get_unique_id(), ": owdb_registered: ", owdb != null)
 
 # NEW: Check if a node is already registered
 func is_node_registered(node: Node3D) -> bool:
 	return _sync_nodes.has(node.name)
-
 
 # NEW: Universal node registration (works with or without Sync component)
 func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_values: Dictionary = {}, sync_component: Sync = null) -> void:
@@ -170,7 +254,7 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 	
 	_sync_nodes[node_name] = sync_data
 	
-	print("Registered node: ", node_name, " (has Sync: ", sync_component != null, ")")
+	print(multiplayer.get_unique_id(), ": Registered node: ", node_name, " (has Sync: ", sync_component != null, ")")
 	
 	# Connect to node signals for automatic cleanup
 	if not node.tree_exiting.is_connected(_on_node_tree_exiting):
@@ -202,7 +286,7 @@ func unregister_node(node: Node3D) -> void:
 				_peer_nodes_observing[peer_id].erase(node_name)
 	
 	_sync_nodes.erase(node_name)
-	print("Unregistered node: ", node_name)
+	print(multiplayer.get_unique_id(), ": Unregistered node: ", node_name)
 
 # NEW: Handle node cleanup when it exits tree
 func _on_node_tree_exiting(node: Node3D):
@@ -332,7 +416,7 @@ func handle_client_connected_to_server() -> void:
 	for node_name in _sync_nodes.keys():
 		var sync_data = _sync_nodes[node_name]
 		if sync_data.is_pre_existing:
-			print("Transferring control of pre-existing node to server: ", node_name)
+			print(multiplayer.get_unique_id(), ": Transferring control of pre-existing node to server: ", node_name)
 			sync_data.peer_id = 1
 			sync_data.is_pre_existing = false
 
@@ -384,7 +468,7 @@ func handle_peer_connected(peer_id: int) -> void:
 		if not _peer_nodes_observing.has(peer_id):
 			_peer_nodes_observing[peer_id] = []
 		
-		print("Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
+		print(multiplayer.get_unique_id(), ": Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
 		
 		if owdb:
 			call_deferred("_update_new_peer_visibility", peer_id)

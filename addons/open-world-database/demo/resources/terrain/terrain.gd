@@ -54,7 +54,7 @@ func _regenerate(value):
 		regenerate = false
 
 func generate_terrain():
-	#print("Generating terrain...")
+	#print(multiplayer.get_unique_id(), ": Generating terrain...")
 	
 	# Clean up existing terrain
 	cleanup_terrain()
@@ -79,7 +79,7 @@ func generate_terrain():
 	# Create collision
 	create_collision(array_mesh)
 	
-	#print("Terrain generation complete!")
+	#print(multiplayer.get_unique_id(), ": Terrain generation complete!")
 
 func cleanup_terrain():
 	# Explicitly free terrain mesh
@@ -223,7 +223,7 @@ func create_collision(array_mesh: ArrayMesh):
 	var shape = array_mesh.create_trimesh_shape()
 	collision_shape.shape = shape
 	
-	#print("Collision shape created with ", shape.get_faces().size() / 3, " triangles")
+	#print(multiplayer.get_unique_id(), ": Collision shape created with ", shape.get_faces().size() / 3, " triangles")
 
 # Updated utility function to get terrain height at world position
 func get_height_at_position(world_pos: Vector3) -> float:

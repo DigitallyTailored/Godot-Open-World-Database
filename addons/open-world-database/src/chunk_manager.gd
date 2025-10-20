@@ -104,6 +104,7 @@ func update_position_chunks(position_id: String, position: Vector3):
 		new_required_chunks[size] = _calculate_required_chunks_for_size(size, position)
 	
 	var old_required_chunks = position_required_chunks.get(position_id, {})
+	var chunks_changed = false
 	
 	# Process each size category
 	for size in sizes:
@@ -114,13 +115,23 @@ func update_position_chunks(position_id: String, position: Vector3):
 		for chunk_pos in old_chunks:
 			if not new_chunks.has(chunk_pos):
 				_remove_chunk_requirement(size, chunk_pos, position_id)
+				chunks_changed = true
 		
 		# Find chunks to add (new but not old)
 		for chunk_pos in new_chunks:
 			if not old_chunks.has(chunk_pos):
 				_add_chunk_requirement(size, chunk_pos, position_id)
+				chunks_changed = true
 	
 	position_required_chunks[position_id] = new_required_chunks
+	
+	# NEW: Always trigger visibility update when peer requirements change in HOST mode
+	if _current_network_mode == OpenWorldDatabase.NetworkMode.HOST and chunks_changed:
+		# Find which peer this position belongs to
+		var peer_id = _get_peer_id_for_position(position_id)
+		if peer_id != -1:
+			# Trigger immediate visibility update for this peer
+			call_deferred("_trigger_peer_visibility_update", peer_id)
 	
 	# Only proceed with batch operations in autonomous mode (HOST)
 	if _autonomous_chunk_management:
@@ -209,7 +220,7 @@ func _on_batch_complete():
 	owdb.debug_log("Chunk states updated after batch completion")
 
 func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array):
-	print("Notifying Syncer of chunk changes - loaded: ", loaded_entities.size(), " unloaded: ", unloaded_entities.size())
+	print(owdb.multiplayer.get_unique_id(), ": Notifying Syncer of chunk changes - loaded: ", loaded_entities.size(), " unloaded: ", unloaded_entities.size())
 	
 	# For newly loaded entities, make them available but let Syncer determine visibility per peer
 	for uid in loaded_entities:
@@ -224,18 +235,33 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 					Syncer.register_node(node, node.scene_file_path, 1, {}, sync_component)
 				
 				_syncer_notified_entities[entity_name] = true
-				print("Notified Syncer about loaded entity: ", entity_name)
+				print(owdb.multiplayer.get_unique_id(), ": Notified Syncer about loaded entity: ", entity_name)
 	
 	# For unloaded entities, hide them from all peers
 	for entity_name in unloaded_entities:
 		if _syncer_notified_entities.has(entity_name):
 			Syncer.entity_all_visible(entity_name, false)
 			_syncer_notified_entities.erase(entity_name)
-			print("Hiding unloaded entity: ", entity_name)
+			print(owdb.multiplayer.get_unique_id(), ": Hiding unloaded entity: ", entity_name)
 	
 	# Always trigger a visibility update when chunks change
 	Syncer._update_entity_visibility_from_owdb()
 
+# NEW: Get peer ID for a position
+func _get_peer_id_for_position(position_id: String) -> int:
+	var owdb_position = position_registry.get(position_id)
+	if owdb_position and is_instance_valid(owdb_position):
+		return owdb_position.get_peer_id()
+	return -1
+
+# NEW: Trigger visibility update for specific peer
+func _trigger_peer_visibility_update(peer_id: int):
+	if not Syncer:
+		return
+	
+	# Call the single-peer visibility update
+	Syncer._update_single_peer_visibility(peer_id)
+	owdb.debug_log("Triggered visibility update for peer: ", peer_id)
 
 func _queue_chunk_operation(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, operation: String):
 	var chunk_key = NodeUtils.get_chunk_key(size, chunk_pos)

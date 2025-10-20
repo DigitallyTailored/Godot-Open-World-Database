@@ -38,7 +38,7 @@ func get_user_database_path(database_name: String) -> String:
 func save_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "":
-		print("Error: Cannot determine database path")
+		print(owdb.multiplayer.get_unique_id(), ": Error: Cannot determine database path")
 		return
 	
 	_save_database_to_path(db_path)
@@ -106,7 +106,7 @@ func _save_database_to_path(db_path: String):
 	
 	var file = FileAccess.open(db_path, FileAccess.WRITE)
 	if not file:
-		print("Error: Could not create database file at: ", db_path)
+		print(owdb.multiplayer.get_unique_id(), ": Error: Could not create database file at: ", db_path)
 		return
 	
 	var top_level_uids = _get_top_level_uids()
@@ -129,7 +129,7 @@ func _get_top_level_uids() -> Array:
 func _load_database_from_path(db_path: String):
 	var file = FileAccess.open(db_path, FileAccess.READ)
 	if not file:
-		print("Error: Could not open database: ", db_path)
+		print(owdb.multiplayer.get_unique_id(), ": Error: Could not open database: ", db_path)
 		return
 	
 	owdb.node_monitor.stored_nodes.clear()
@@ -168,11 +168,11 @@ func _load_database_from_path(db_path: String):
 	owdb.debug_log("Database loaded successfully from: ", db_path)
 
 func debug():
-	print("")
-	print("All known nodes  ", owdb.node_monitor.stored_nodes)
-	print("")
-	print("Chunked nodes ", owdb.chunk_lookup)
-	print("")
+	print(owdb.multiplayer.get_unique_id(), ": ")
+	print(owdb.multiplayer.get_unique_id(), ": All known nodes  ", owdb.node_monitor.stored_nodes)
+	print(owdb.multiplayer.get_unique_id(), ": ")
+	print(owdb.multiplayer.get_unique_id(), ": Chunked nodes ", owdb.chunk_lookup)
+	print(owdb.multiplayer.get_unique_id(), ": ")
 
 func _write_node_recursive(file: FileAccess, uid: String, depth: int):
 	var info = owdb.node_monitor.stored_nodes.get(uid, {})

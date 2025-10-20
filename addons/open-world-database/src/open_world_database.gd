@@ -302,7 +302,7 @@ func _immediate_load_node(uid: String):
 	else:
 		new_node = ClassDB.instantiate(node_info.scene)
 		if not new_node:
-			print("Failed to create node of type: ", node_info.scene)
+			print(multiplayer.get_unique_id(), ": Failed to create node of type: ", node_info.scene)
 			return
 	
 	new_node.set_meta("_owd_uid", uid)
@@ -360,14 +360,14 @@ func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)
 
 func debug():
-	print("=== OWDB DEBUG INFO ===")
-	print("Network Mode: ", current_network_mode)
-	print("Nodes currently loaded: ", get_currently_loaded_nodes())
-	print("Total nodes in database: ", get_total_database_nodes())
-	print("Active OWDBPosition nodes: ", get_active_position_count())
+	print(multiplayer.get_unique_id(), ": === OWDB DEBUG INFO ===")
+	print(multiplayer.get_unique_id(), ": Network Mode: ", current_network_mode)
+	print(multiplayer.get_unique_id(), ": Nodes currently loaded: ", get_currently_loaded_nodes())
+	print(multiplayer.get_unique_id(), ": Total nodes in database: ", get_total_database_nodes())
+	print(multiplayer.get_unique_id(), ": Active OWDBPosition nodes: ", get_active_position_count())
 	var chunk_info = chunk_manager.get_chunk_requirement_info()
-	print("Chunks required: ", chunk_info.total_chunks_required)
-	print("Chunks loaded: ", chunk_info.chunks_loaded)
+	print(multiplayer.get_unique_id(), ": Chunks required: ", chunk_info.total_chunks_required)
+	print(multiplayer.get_unique_id(), ": Chunks loaded: ", chunk_info.chunks_loaded)
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():
