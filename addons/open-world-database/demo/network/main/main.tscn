@@ -115,7 +115,8 @@ text = "Join"
 
 [node name="OpenWorldDatabase" type="Node" parent="."]
 script = ExtResource("2_x0vdw")
-chunk_sizes = Array[float]([2.0, 4.0, 8.0])
+chunk_sizes = Array[float]([1.0, 2.0, 4.0])
+threshold_ratio = 0.75
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
 
 [node name="SyncNodes" type="Node" parent="."]

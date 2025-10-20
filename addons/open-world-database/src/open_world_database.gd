@@ -16,8 +16,9 @@ const SKIP_PROPERTIES = [
 	"script", "transform", "global_transform", "global_position", "global_rotation"
 ]
 
-@export var size_thresholds: Array[float] = [1.0, 4.0, 16.0]
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
+@export var threshold_ratio: float = 0.25
+
 @export var chunk_load_range: int = 3
 @export var debug_enabled: bool = false
 
@@ -48,6 +49,13 @@ var nodes_being_unloaded: Dictionary = {} # uid -> true
 var current_network_mode: NetworkMode = NetworkMode.STANDALONE
 var _multiplayer_connected: bool = false
 
+# Add this getter
+func get_size_thresholds() -> Array[float]:
+	var thresholds: Array[float] = []
+	for chunk_size in chunk_sizes:
+		thresholds.append(chunk_size * threshold_ratio)
+	return thresholds
+	
 func debug_log(message: String, value = null):
 	if debug_enabled:
 		if value != null:
@@ -232,8 +240,9 @@ func get_size_category(node_size: float) -> Size:
 	if node_size == 0.0:
 		return Size.ALWAYS_LOADED
 	
-	for i in size_thresholds.size():
-		if node_size <= size_thresholds[i]:
+	var thresholds = get_size_thresholds()
+	for i in thresholds.size():
+		if node_size <= thresholds[i]:
 			return i
 	
 	return Size.ALWAYS_LOADED
