@@ -2,14 +2,12 @@
 extends Node
 
 
-@onready var host_button = $Host
-@onready var join_button = $Join
 @onready var owdb = $OpenWorldDatabase  # Reference to OWDB
 
 func _ready() -> void:
 	# Connect UI buttons
-	host_button.pressed.connect(_on_host_pressed)
-	join_button.pressed.connect(_on_join_pressed)
+	$UI/Host.pressed.connect(_on_host_pressed)
+	$UI/Join.pressed.connect(_on_join_pressed)
 	
 	# Connect multiplayer signals
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -34,7 +32,7 @@ func _on_host_pressed() -> void:
 func _on_join_pressed() -> void:
 	# Connect to server
 	var peer = ENetMultiplayerPeer.new()
-	peer.create_client("127.0.0.1", 7777)
+	peer.create_client($UI/JoinIP.text, 7777)
 	multiplayer.multiplayer_peer = peer
 	
 	# Disable UI
@@ -43,8 +41,7 @@ func _on_join_pressed() -> void:
 	get_window().title = "CLIENT - " + str(multiplayer.get_unique_id())
 
 func _disable_buttons() -> void:
-	host_button.visible = false
-	join_button.visible = false
+	$UI.visible = false
 
 func _on_peer_connected(id: int) -> void:
 	# Server adds a player for the connected client

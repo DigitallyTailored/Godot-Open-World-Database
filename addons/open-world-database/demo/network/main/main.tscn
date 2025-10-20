@@ -50,21 +50,67 @@ surface_material_override/0 = SubResource("StandardMaterial3D_shys2")
 shape = SubResource("ConvexPolygonShape3D_wi4fq")
 
 [node name="FPS" type="Label" parent="."]
-offset_right = 40.0
-offset_bottom = 23.0
+offset_left = 9.0
+offset_top = 8.0
+offset_right = 49.0
+offset_bottom = 31.0
 text = "0"
 script = ExtResource("2_bpdpu")
 
-[node name="Host" type="Button" parent="."]
-offset_top = 51.0
-offset_right = 44.0
-offset_bottom = 82.0
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+
+[node name="Host" type="Button" parent="UI"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -70.0
+offset_top = -58.0
+offset_right = 134.0
+offset_bottom = -27.0
+grow_horizontal = 2
+grow_vertical = 2
 text = "Host"
 
-[node name="Join" type="Button" parent="."]
-offset_top = 109.0
-offset_right = 38.0
-offset_bottom = 140.0
+[node name="JoinIP" type="LineEdit" parent="UI"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -70.0
+offset_top = -19.0
+offset_right = 70.0
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "127.0.0.1"
+alignment = 1
+
+[node name="Join" type="Button" parent="UI"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 68.0
+offset_top = -19.0
+offset_right = 134.0
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
 text = "Join"
 
 [node name="OpenWorldDatabase" type="Node" parent="."]
