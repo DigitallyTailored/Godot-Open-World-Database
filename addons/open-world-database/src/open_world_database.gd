@@ -18,22 +18,22 @@ const SKIP_PROPERTIES = [
 
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
 @export var threshold_ratio: float = 0.25
-
 @export var chunk_load_range: int = 3
-@export var debug_enabled: bool = false
 
 # Network integration
 @export_group("Network Settings")
 @export var auto_network_enabled: bool = true
 @export var force_network_mode: NetworkMode = NetworkMode.STANDALONE
 
-@export_tool_button("debug info", "Debug") var debug_action = debug
-
 # Batch processing configuration
 @export_group("Batch Processing")
+@export var batch_processing_enabled: bool = true
 @export var batch_time_limit_ms: float = 5.0
 @export var batch_interval_ms: float = 100.0
-@export var batch_processing_enabled: bool = true
+
+@export_group("Debug")
+@export_tool_button("debug info", "Debug") var debug_action = debug
+@export var debug_enabled: bool = false
 
 var chunk_lookup: Dictionary = {} # [Size][Vector2i] -> Array[String] (UIDs)
 var loaded_nodes_by_uid: Dictionary = {} # uid -> Node (cached for O(1) lookup)
