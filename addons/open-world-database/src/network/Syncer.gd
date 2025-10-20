@@ -184,10 +184,14 @@ func _update_single_peer_visibility(peer_id: int):
 			else:
 				print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
-# FIXED: Use OWDB's chunk system with proper edge case handling
+# FIXED: Use OWDB's chunk system only for OWDB-managed entities
 func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node3D) -> bool:
 	if not owdb or not entity_node:
 		return true
+	
+	# NEW: Only apply chunk-based visibility to entities that are children of OWDB
+	if not owdb.is_ancestor_of(entity_node):
+		return true  # Non-OWDB entities (like players) are always visible
 	
 	# Get the peer's position
 	var owdb_position = _peer_positions.get(peer_id)
@@ -247,7 +251,7 @@ func is_node_registered(node: Node3D) -> bool:
 func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_values: Dictionary = {}, sync_component: Sync = null) -> void:
 	var node_name = node.name
 	var node_scene = scene if scene != "" else (node.scene_file_path if node.scene_file_path != "" else node.get_class())
-	var node_path = _get_node_path(node)
+	var node_path = node.get_parent().get_path()
 	
 	var sync_data = SyncNodeData.new(node, node_scene, node_name, node_path, peer_id, initial_values, sync_component)
 	sync_data.is_pre_existing = _check_if_pre_existing(node_name)
@@ -291,12 +295,6 @@ func unregister_node(node: Node3D) -> void:
 # NEW: Handle node cleanup when it exits tree
 func _on_node_tree_exiting(node: Node3D):
 	unregister_node(node)
-
-func _get_node_path(node: Node3D) -> String:
-	var current_parent = node.get_parent()
-	if current_parent == get_node("/root"):
-		return ""
-	return current_parent.get_path()
 
 func _check_if_pre_existing(node_name: String) -> bool:
 	if not multiplayer or not multiplayer.has_multiplayer_peer():
@@ -503,5 +501,3 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 		sync_component.peer_id = peer_id
 		sync_component.synced_values = initial_variables
 	
-	# Register the node (whether it has Sync or not)
-	#register_node(node, scene, peer_id, initial_variables, sync_component)
