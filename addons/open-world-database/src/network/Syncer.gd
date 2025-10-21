@@ -185,7 +185,7 @@ func _update_single_peer_visibility(peer_id: int):
 				print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
 # FIXED: Use OWDB's chunk system only for OWDB-managed entities
-func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node3D) -> bool:
+func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node) -> bool:
 	if not owdb or not entity_node:
 		return true
 	

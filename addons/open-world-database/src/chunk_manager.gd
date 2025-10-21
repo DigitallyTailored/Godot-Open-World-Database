@@ -225,7 +225,7 @@ func _is_syncer_available() -> bool:
 		return false
 	
 	# Check if Syncer exists and is not a placeholder
-	return Syncer != null and not Syncer.is_placeholder()
+	return Syncer != null and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder())
 
 func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array):
 	if not _is_syncer_available():

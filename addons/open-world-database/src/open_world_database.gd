@@ -1,4 +1,3 @@
-# open-world-database.gd
 @tool
 extends Node
 class_name OpenWorldDatabase
@@ -60,16 +59,16 @@ var _chunk_load_range: int = 3
 # Batch processing configuration
 @export_group("Batch Processing")
 @export var batch_processing_enabled: bool = true
-@export var batch_time_limit_ms: float = 5.0
-@export var batch_interval_ms: float = 100.0
+@export var batch_time_limit_ms: float = 10.0
+@export var batch_interval_ms: float = 50.0
 
 # Editor Camera Following
 @export_group("Editor")
 @export var follow_editor_camera: bool = true
-@export_tool_button("debug info", "Debug") var debug_action = debug
 
 @export_group("Debug")
 @export var debug_enabled: bool = false
+@export_tool_button("debug info", "Debug") var debug_action = debug
 
 var chunk_lookup: Dictionary = {} # [Size][Vector2i] -> Array[String] (UIDs)
 var loaded_nodes_by_uid: Dictionary = {} # uid -> Node (cached for O(1) lookup)
@@ -261,7 +260,7 @@ func _register_with_syncer():
 	if Engine.is_editor_hint():
 		return
 		
-	if Syncer and not Syncer.is_placeholder():
+	if Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
 		Syncer.register_owdb(self)
 		debug_log("OWDB registered with Syncer")
 	
@@ -270,7 +269,7 @@ func _exit_tree():
 	_remove_editor_camera_position()
 	
 	# Unregister from Syncer when OWDB is destroyed (runtime only)
-	if not Engine.is_editor_hint() and Syncer and not Syncer.is_placeholder():
+	if not Engine.is_editor_hint() and Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
 		Syncer.unregister_owdb()
 		debug_log("OWDB unregistered from Syncer")
 		
@@ -479,76 +478,6 @@ func list_custom_databases() -> Array[String]:
 
 func delete_custom_database(database_name: String) -> bool:
 	return database.delete_custom_database(database_name)
-
-func _immediate_load_node(uid: String):
-	if uid not in node_monitor.stored_nodes:
-		return
-	
-	if loaded_nodes_by_uid.has(uid):
-		return
-		
-	var node_info = node_monitor.stored_nodes[uid]
-	var new_node: Node
-	
-	if node_info.scene.begins_with("res://"):
-		var scene = load(node_info.scene)
-		new_node = scene.instantiate()
-	else:
-		new_node = ClassDB.instantiate(node_info.scene)
-		if not new_node:
-			print(multiplayer.get_unique_id(), ": Failed to create node of type: ", node_info.scene)
-			return
-	
-	new_node.set_meta("_owd_uid", uid)
-	new_node.name = uid
-	
-	var parent_node = self
-	if node_info.parent_uid != "":
-		var parent = loaded_nodes_by_uid.get(node_info.parent_uid)
-		if parent:
-			parent_node = parent
-	
-	for prop_name in node_info.properties:
-		if prop_name not in ["position", "rotation", "scale", "size"]:
-			if new_node.has_method("set") and prop_name in new_node:
-				var stored_value = node_info.properties[prop_name]
-				var current_value = new_node.get(prop_name)
-				var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
-				new_node.set(prop_name, converted_value)
-	
-	parent_node.add_child(new_node)
-	new_node.owner = owner
-	
-	if new_node is Node3D:
-		new_node.global_position = node_info.position
-		new_node.global_rotation = node_info.rotation
-		new_node.scale = node_info.scale
-	
-	loaded_nodes_by_uid[uid] = new_node
-	_setup_listeners(new_node)
-	
-	debug_log("NODE LOADED: " + uid + " at ", node_info.position)
-
-func _immediate_unload_node(uid: String):
-	var node = loaded_nodes_by_uid.get(uid)
-	if not node:
-		return
-	
-	nodes_being_unloaded[uid] = true
-	
-	var node_info = node_monitor.stored_nodes.get(uid, {})
-	if not node_info.is_empty():
-		if node is Node3D:
-			node_info.position = node.global_position
-			node_info.rotation = node.global_rotation
-			node_info.scale = node.scale
-	
-	loaded_nodes_by_uid.erase(uid)
-	node.free()
-	
-	call_deferred("_cleanup_unload_tracking", uid)
-	
-	debug_log("NODE UNLOADED: ", uid)
 
 func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)

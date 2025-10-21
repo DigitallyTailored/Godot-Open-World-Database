@@ -19,7 +19,7 @@ func _host_process(delta: float) -> void:
 	position.y = 1 + sin(Time.get_ticks_msec() * 0.001) * 2
 	
 	#$Sync.output(["position"]) #immediatly broadcast position update
-	$Sync.output_timed(["position"], 200) #send in intervals instead
+	$Sync.output_timed(["position"], 20) #send in intervals instead
 	if Time.get_ticks_msec() > next_update:
 		next_update = Time.get_ticks_msec() + 200
 		data["text"] = Syncer.nodes.random_string()
