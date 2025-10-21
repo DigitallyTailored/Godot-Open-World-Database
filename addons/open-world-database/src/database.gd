@@ -34,7 +34,7 @@ func get_user_database_path(database_name: String) -> String:
 	
 	return "user://" + db_name
 
-# Consolidated save function
+# Consolidated save function with resource management
 func save_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "":
@@ -43,7 +43,7 @@ func save_database(custom_name: String = ""):
 	
 	_save_database_to_path(db_path)
 
-# Consolidated load function  
+# Consolidated load function with resource management
 func load_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "" or not FileAccess.file_exists(db_path):
@@ -79,15 +79,14 @@ func delete_custom_database(database_name: String) -> bool:
 	return false
 
 func _save_database_to_path(db_path: String):
-	# Update all currently loaded nodes and handle size/position changes
-	# BUT only if they still exist in stored_nodes (haven't been deleted)
-	for uid in owdb.loaded_nodes_by_uid.keys():  # Use keys() to avoid modification during iteration
+	# STEP 1: Update all currently loaded nodes and handle size/position changes
+	# This will register resources from loaded nodes into the registry
+	for uid in owdb.loaded_nodes_by_uid.keys():
 		if not owdb.node_monitor.stored_nodes.has(uid):
-			continue  # Skip nodes that have been removed from database
+			continue
 			
 		var node = owdb.loaded_nodes_by_uid[uid]
 		if not is_instance_valid(node):
-			# Clean up invalid node references
 			owdb.loaded_nodes_by_uid.erase(uid)
 			continue
 			
@@ -96,13 +95,18 @@ func _save_database_to_path(db_path: String):
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})
 		owdb.node_monitor.update_stored_node(node, true)
 		
-		# Check if node needs to be moved to different chunk
 		if old_info.has("position") and old_info.has("size"):
 			var new_info = owdb.node_monitor.stored_nodes[uid]
 			
 			if old_info.position.distance_to(new_info.position) > 0.01 or abs(old_info.size - new_info.size) > 0.01:
 				owdb.remove_from_chunk_lookup(uid, old_info.position, old_info.size)
 				owdb.add_to_chunk_lookup(uid, new_info.position, new_info.size)
+	
+	# STEP 2: Find all resource IDs actually being used in ALL stored nodes
+	var used_resource_ids = _find_all_used_resource_ids()
+	
+	# STEP 3: Remove unused resources from registry
+	_remove_unused_resources(used_resource_ids)
 	
 	var file = FileAccess.open(db_path, FileAccess.WRITE)
 	if not file:
@@ -111,11 +115,83 @@ func _save_database_to_path(db_path: String):
 	
 	var top_level_uids = _get_top_level_uids()
 	
+	# Write nodes first
 	for uid in top_level_uids:
 		_write_node_recursive(file, uid, 0)
 	
+	# Write resource registry at the end
+	_write_resource_registry(file)
+	
 	file.close()
-	owdb.debug_log("Database saved successfully to: ", db_path)
+	owdb.debug_log("Database saved successfully with resources to: ", db_path)
+
+# NEW: Simple approach - find all resource IDs actually being used
+func _find_all_used_resource_ids() -> Dictionary:
+	var used_resources = {}
+	
+	for uid in owdb.node_monitor.stored_nodes:
+		var node_info = owdb.node_monitor.stored_nodes[uid]
+		_collect_resource_ids_from_properties(node_info.properties, used_resources)
+	
+	owdb.debug_log("Found resource IDs in use: ", used_resources.keys())
+	return used_resources
+
+func _collect_resource_ids_from_properties(properties: Dictionary, used_resources: Dictionary):
+	for prop_name in properties:
+		var value = properties[prop_name]
+		_collect_resource_ids_from_value(value, used_resources)
+
+func _collect_resource_ids_from_value(value, used_resources: Dictionary):
+	if value is String:
+		# Check if it looks like a resource ID
+		if value.begins_with("<") and "#" in value and value.ends_with(">"):
+			used_resources[value] = true
+			owdb.debug_log("Found resource ID in use: ", value)
+		elif value.begins_with("file:"):
+			used_resources[value] = true
+			owdb.debug_log("Found file resource in use: ", value)
+	elif value is Array:
+		for item in value:
+			_collect_resource_ids_from_value(item, used_resources)
+	elif value is Dictionary:
+		for key in value:
+			_collect_resource_ids_from_value(value[key], used_resources)
+
+# NEW: Remove resources not in the used list
+func _remove_unused_resources(used_resource_ids: Dictionary):
+	var resources_to_remove = []
+	
+	for resource_id in owdb.node_monitor.resource_manager.resource_registry:
+		if not used_resource_ids.has(resource_id):
+			resources_to_remove.append(resource_id)
+	
+	for resource_id in resources_to_remove:
+		var info = owdb.node_monitor.resource_manager.resource_registry[resource_id]
+		owdb.node_monitor.resource_manager.content_hash_to_id.erase(info.content_hash)
+		owdb.node_monitor.resource_manager.resource_registry.erase(resource_id)
+		owdb.debug_log("Removed unused resource: ", resource_id)
+	
+	if resources_to_remove.size() > 0:
+		owdb.debug_log("Removed unused resources: ", resources_to_remove.size())
+
+func _write_resource_registry(file: FileAccess):
+	var resources = owdb.node_monitor.resource_manager.serialize_resources()
+	
+	if resources.is_empty():
+		owdb.debug_log("No resources to save")
+		return
+	
+	# Write section header
+	file.store_line("RESOURCES")
+	
+	# Write each resource on its own line with clean format
+	for resource_id in resources:
+		var resource_data = resources[resource_id]
+		var resource_json = JSON.stringify(resource_data)
+		file.store_line(resource_id + ":" + resource_json)
+	
+	var registry_info = owdb.node_monitor.resource_manager.get_registry_info()
+	owdb.debug_log("Saved resource registry: ", registry_info)
 
 func _get_top_level_uids() -> Array:
 	var top_level_uids = []
@@ -123,7 +199,6 @@ func _get_top_level_uids() -> Array:
 		if owdb.node_monitor.stored_nodes[uid].parent_uid == "":
 			top_level_uids.append(uid)
 	
-	#top_level_uids.sort()
 	return top_level_uids
 
 func _load_database_from_path(db_path: String):
@@ -132,17 +207,37 @@ func _load_database_from_path(db_path: String):
 		print(owdb.multiplayer.get_unique_id(), ": Error: Could not open database: ", db_path)
 		return
 	
+	# Clear existing data
 	owdb.node_monitor.stored_nodes.clear()
 	owdb.chunk_lookup.clear()
+	owdb.node_monitor.resource_manager.reset()
 	
 	var node_stack = []
 	var depth_stack = []
+	var resources_loaded = 0
+	var in_resources_section = false
 	
 	while not file.eof_reached():
-		var line = file.get_line()
+		var line = file.get_line().strip_edges()
 		if line == "":
 			continue
 		
+		# Check for resources section
+		if line == "RESOURCES":
+			in_resources_section = true
+			continue
+		
+		# If we're in the resources section, parse resource entries
+		if in_resources_section:
+			if ":" in line:
+				var colon_pos = line.find(":")
+				var resource_id = line.substr(0, colon_pos)
+				var resource_json = line.substr(colon_pos + 1)
+				_load_single_resource(resource_id, resource_json)
+				resources_loaded += 1
+			continue
+		
+		# Parse regular node lines (not in resources section)
 		var depth = 0
 		while depth < line.length() and line[depth] == "\t":
 			depth += 1
@@ -165,7 +260,35 @@ func _load_database_from_path(db_path: String):
 		owdb.add_to_chunk_lookup(info.uid, info.position, info.size)
 	
 	file.close()
-	owdb.debug_log("Database loaded successfully from: ", db_path)
+	
+	var load_msg = "Database loaded successfully from: " + db_path
+	if resources_loaded > 0:
+		load_msg += " (Resources: " + str(resources_loaded) + ")"
+	
+	owdb.debug_log(load_msg)
+
+func _load_single_resource(resource_id: String, resource_json: String):
+	var json = JSON.new()
+	if json.parse(resource_json) == OK:
+		var resource_data = json.data
+		
+		var info = owdb.node_monitor.resource_manager.ResourceInfo.new(
+			resource_id, 
+			resource_data.get("type", ""), 
+			resource_data.get("content_hash", "")
+		)
+		info.original_id = resource_data.get("original_id", "")
+		info.file_path = resource_data.get("file_path", "")
+		info.properties = resource_data.get("properties", {})
+		
+		owdb.node_monitor.resource_manager.resource_registry[resource_id] = info
+		
+		if info.content_hash != "":
+			owdb.node_monitor.resource_manager.content_hash_to_id[info.content_hash] = resource_id
+		
+		owdb.debug_log("Loaded resource: ", resource_id + " (" + info.resource_type + ")")
+	else:
+		owdb.debug_log("Failed to parse resource JSON for: ", resource_id)
 
 func debug():
 	print(owdb.multiplayer.get_unique_id(), ": ")
@@ -173,6 +296,8 @@ func debug():
 	print(owdb.multiplayer.get_unique_id(), ": ")
 	print(owdb.multiplayer.get_unique_id(), ": Chunked nodes ", owdb.chunk_lookup)
 	print(owdb.multiplayer.get_unique_id(), ": ")
+	var registry_info = owdb.node_monitor.resource_manager.get_registry_info()
+	print(owdb.multiplayer.get_unique_id(), ": Resource Registry: ", registry_info)
 
 func _write_node_recursive(file: FileAccess, uid: String, depth: int):
 	var info = owdb.node_monitor.stored_nodes.get(uid, {})
@@ -201,7 +326,6 @@ func _get_child_uids(parent_uid: String) -> Array:
 		if owdb.node_monitor.stored_nodes[child_uid].parent_uid == parent_uid:
 			child_uids.append(child_uid)
 	
-	#child_uids.sort()
 	return child_uids
 
 func _parse_line(line: String) -> Dictionary:

@@ -15,3 +15,6 @@ Box-1760844858466_5483|"res://addons/open-world-database/demo/network/test/box.t
 Box-1760844859867_3539|"res://addons/open-world-database/demo/network/test/box.tscn"|-3.82498168945313,0.0,-1.54929995536804|0.0,0.0,0.0|1.0,1.0,1.0|2.02950000762939|{}
 Box5-1760846945559_6898|"res://addons/open-world-database/demo/network/test/boxDumb.tscn"|12.9042892456055,-1.45000457763672,1.76136016845703|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{}
 Box6-1760846945559_6232|"res://addons/open-world-database/demo/network/test/boxDumb.tscn"|8.36980247497559,-1.45000267028809,-2.70438003540039|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{}
+MeshInstance3D-1761018600463_4814|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|0.99999982118607|{"mesh":"<SphereMesh#-9223369272506357521>"}
+RESOURCES
+<SphereMesh#-9223369272506357521>:{"content_hash":"9cee06f0c8af29b397f0b478588532eb28069f72377938d61ac43c02d36385a0","file_path":"","original_id":"-9223369272506357521","properties":{},"type":"SphereMesh"}

@@ -452,6 +452,9 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	
 	var node_info = node_monitor.stored_nodes[uid]
 	
+	# Clean up resource references
+	node_monitor.remove_node_resources(uid)
+	
 	remove_from_chunk_lookup(uid, node_info.position, node_info.size)
 	node_monitor.stored_nodes.erase(uid)
 	loaded_nodes_by_uid.erase(uid)

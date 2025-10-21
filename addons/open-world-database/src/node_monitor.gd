@@ -5,10 +5,17 @@ class_name NodeMonitor
 var owdb: OpenWorldDatabase
 var stored_nodes: Dictionary = {} # uid -> node info
 var baseline_values: Dictionary = {} # class_name -> {property_name -> default_value}
+var resource_manager: ResourceManager
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
+	resource_manager = ResourceManager.new(owdb)
 	_initialize_baseline_values()
+
+# UPDATED: Don't reset resource manager here - only reset when specifically needed
+func reset():
+	# Don't reset resource_manager here - it should persist during normal operation
+	pass
 
 func _initialize_baseline_values():
 	var node_types = [
@@ -66,9 +73,65 @@ func _get_modified_properties(node: Node) -> Dictionary:
 		var current_value = node.get(prop_name)
 		
 		if not NodeUtils.values_equal(current_value, baseline.get(prop_name)):
-			modified_properties[prop_name] = current_value
+			# Use resource manager for resource properties
+			var serialized_value = _serialize_property_value(current_value)
+			modified_properties[prop_name] = serialized_value
+			owdb.debug_log("Serialized property '" + prop_name + "' as: ", serialized_value)
 	
 	return modified_properties
+
+func _serialize_property_value(value) -> Variant:
+	if value is Resource:
+		var resource_id = resource_manager.register_resource(value)
+		owdb.debug_log("Registered resource with ID: ", resource_id)
+		return resource_id
+	elif value is Array:
+		var serialized_array = []
+		for item in value:
+			serialized_array.append(_serialize_property_value(item))
+		return serialized_array
+	elif value is Dictionary:
+		var serialized_dict = {}
+		for key in value:
+			serialized_dict[key] = _serialize_property_value(value[key])
+		return serialized_dict
+	else:
+		return value
+
+# Apply properties during node restoration
+func apply_stored_properties(node: Node, properties: Dictionary):
+	for prop_name in properties:
+		if prop_name not in ["position", "rotation", "scale", "size"]:
+			if node.has_method("set") and prop_name in node:
+				var stored_value = properties[prop_name]
+				var current_value = node.get(prop_name)
+				var converted_value = _deserialize_property_value(stored_value, current_value)
+				node.set(prop_name, converted_value)
+				owdb.debug_log("Applied property '" + prop_name + "' with value: ", converted_value)
+
+func _deserialize_property_value(stored_value, current_value) -> Variant:
+	# Handle resource references
+	if stored_value is String and resource_manager.resource_registry.has(stored_value):
+		var restored_resource = resource_manager.restore_resource(stored_value)
+		owdb.debug_log("Restored resource: ", stored_value)
+		return restored_resource
+	elif stored_value is Array:
+		var deserialized_array = []
+		var current_array = current_value if current_value is Array else []
+		for i in range(stored_value.size()):
+			var current_item = current_array[i] if i < current_array.size() else null
+			deserialized_array.append(_deserialize_property_value(stored_value[i], current_item))
+		return deserialized_array
+	elif stored_value is Dictionary:
+		var deserialized_dict = {}
+		var current_dict = current_value if current_value is Dictionary else {}
+		for key in stored_value:
+			var current_item = current_dict.get(key)
+			deserialized_dict[key] = _deserialize_property_value(stored_value[key], current_item)
+		return deserialized_dict
+	else:
+		# Use existing conversion for non-resource properties
+		return NodeUtils.convert_property_value(stored_value, current_value)
 
 func _get_node_source(node: Node) -> String:
 	if node.scene_file_path != "":
@@ -93,3 +156,26 @@ func get_nodes_for_chunk(size: OpenWorldDatabase.Size, chunk_pos: Vector2i) -> A
 			if stored_nodes.has(uid):
 				nodes.append(stored_nodes[uid])
 	return nodes
+
+# Clean up resource references when nodes are removed
+func remove_node_resources(uid: String):
+	if not stored_nodes.has(uid):
+		return
+	
+	var node_info = stored_nodes[uid]
+	_cleanup_property_resources(node_info.properties)
+
+func _cleanup_property_resources(properties: Dictionary):
+	for prop_name in properties:
+		var value = properties[prop_name]
+		_decrement_resource_references(value)
+
+func _decrement_resource_references(value):
+	if value is String and resource_manager.resource_registry.has(value):
+		resource_manager.decrement_reference(value)
+	elif value is Array:
+		for item in value:
+			_decrement_resource_references(item)
+	elif value is Dictionary:
+		for key in value:
+			_decrement_resource_references(value[key])

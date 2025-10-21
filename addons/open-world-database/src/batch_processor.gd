@@ -126,6 +126,7 @@ func _process_remove_node_operation(operation: Dictionary) -> bool:
 	return _remove_scene_node(node_name)
 
 # OWDB node loading (consolidated from main class)
+
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
 		return
@@ -154,14 +155,8 @@ func _immediate_load_node(uid: String):
 		if parent:
 			parent_node = parent
 	
-	# Apply properties
-	for prop_name in node_info.properties:
-		if prop_name not in ["position", "rotation", "scale", "size"]:
-			if new_node.has_method("set") and prop_name in new_node:
-				var stored_value = node_info.properties[prop_name]
-				var current_value = new_node.get(prop_name)
-				var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
-				new_node.set(prop_name, converted_value)
+	# Apply properties using resource manager
+	owdb.node_monitor.apply_stored_properties(new_node, node_info.properties)
 	
 	parent_node.add_child(new_node)
 	new_node.owner = owdb.owner
@@ -175,7 +170,7 @@ func _immediate_load_node(uid: String):
 	owdb._setup_listeners(new_node)
 	
 	_debug_log("NODE LOADED: " + uid + " at " + str(node_info.position))
-
+	
 func _immediate_unload_node(uid: String):
 	if not owdb:
 		return
