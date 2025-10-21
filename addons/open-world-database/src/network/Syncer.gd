@@ -9,6 +9,10 @@ var _peer_nodes_observing: Dictionary = {}
 var owdb: OpenWorldDatabase = null
 var _peer_positions: Dictionary = {} # peer_id -> OWDBPosition
 
+# Client-side resource management
+var _pending_nodes: Dictionary = {} # node_name -> {node_data, missing_resources}
+var _resource_requests: Dictionary = {} # resource_id -> Array of node_names waiting for it
+
 var transform_mappings := {
 	"position": "P", "position.x": "PX", "position.y": "PY", "position.z": "PZ",
 	"rotation": "R", "rotation.x": "RX", "rotation.y": "RY", "rotation.z": "RZ",
@@ -271,7 +275,7 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 					node.visible = true
 				else:
 					rpc_id(peer_id_key, "add_node", node_name, node_scene, sync_data.peer_id, 
-						node.position, node.rotation, sync_data.synced_values, node_path)
+						node.position, node.rotation, node.scale, sync_data.synced_values, node_path)
 
 # NEW: Universal node unregistration
 func unregister_node(node: Node3D) -> void:
@@ -390,9 +394,17 @@ func entity_peer_visible(peer_id: int, node_name: String, is_visible: bool) -> v
 			if peer_id == 1:
 				sync_data.parent.visible = true
 			else:
+				# Get OWDB properties for this node if it's an OWDB entity
+				var properties_to_send = sync_data.synced_values.duplicate()
+				if owdb and owdb.is_ancestor_of(sync_data.parent):
+					var uid = sync_data.parent.name
+					if owdb.node_monitor.stored_nodes.has(uid):
+						var node_info = owdb.node_monitor.stored_nodes[uid]
+						properties_to_send = node_info.properties.duplicate()
+				
 				rpc_id(peer_id, "add_node", node_name, sync_data.parent_scene, 
 					sync_data.peer_id, sync_data.parent.position, 
-					sync_data.parent.rotation, sync_data.synced_values, sync_data.parent_path)
+					sync_data.parent.rotation, sync_data.parent.scale, properties_to_send, sync_data.parent_path)
 			
 	elif not is_visible and _peer_nodes_observing[peer_id].has(node_name):
 		_peer_nodes_observing[peer_id].erase(node_name)
@@ -418,14 +430,148 @@ func handle_client_connected_to_server() -> void:
 			sync_data.peer_id = 1
 			sync_data.is_pre_existing = false
 
+# NEW: Client-side resource checking and requesting
+func _check_and_request_resources(node_name: String, properties: Dictionary):
+	var missing_resources = []
+	_collect_missing_resource_ids(properties, missing_resources)
+	
+	if missing_resources.is_empty():
+		# All resources available, create the node immediately
+		_create_pending_node(node_name)
+		return
+	
+	print(multiplayer.get_unique_id(), ": Node ", node_name, " needs ", missing_resources.size(), " resources: ", missing_resources)
+	
+	# Store node data for later creation
+	if not _pending_nodes.has(node_name):
+		_pending_nodes[node_name] = {}
+	_pending_nodes[node_name]["missing_resources"] = missing_resources.duplicate()
+	
+	# Request each missing resource
+	for resource_id in missing_resources:
+		# Track which nodes are waiting for this resource
+		if not _resource_requests.has(resource_id):
+			_resource_requests[resource_id] = []
+			# Only request if we're not already requesting it
+			rpc_id(1, "request_resource", resource_id)
+			print(multiplayer.get_unique_id(), ": Requesting resource: ", resource_id)
+		
+		if not _resource_requests[resource_id].has(node_name):
+			_resource_requests[resource_id].append(node_name)
+
+func _collect_missing_resource_ids(properties: Dictionary, missing_list: Array):
+	for prop_name in properties:
+		var value = properties[prop_name]
+		_check_value_for_missing_resources(value, missing_list)
+
+func _check_value_for_missing_resources(value, missing_list: Array):
+	if value is String:
+		# Check if it looks like a resource ID
+		if (value.begins_with("<") and "#" in value and value.ends_with(">")) or value.begins_with("file:"):
+			# Check if we have this resource locally
+			if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
+				if not owdb.node_monitor.resource_manager.resource_registry.has(value):
+					if not missing_list.has(value):
+						missing_list.append(value)
+	elif value is Array:
+		for item in value:
+			_check_value_for_missing_resources(item, missing_list)
+	elif value is Dictionary:
+		for key in value:
+			_check_value_for_missing_resources(value[key], missing_list)
+
+func _create_pending_node(node_name: String):
+	if not _pending_nodes.has(node_name):
+		return
+	
+	var node_data = _pending_nodes[node_name]
+	_pending_nodes.erase(node_name)
+	
+	# Create the node using existing logic
+	nodes.add_id(
+		node_name,
+		node_data.scene,
+		node_data.parent_path,
+		func(entity: Node) -> void:
+			# Set scale before calling entity_sync_setup
+			if entity is Node3D:
+				entity.scale = node_data.scale
+			entity_sync_setup(entity, node_data.scene, node_data.position, node_data.rotation, node_data.peer_id, node_data.initial_variables)
+	)
+
+# Resource request/response RPCs
+@rpc("any_peer", "reliable")
+func request_resource(resource_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	
+	print(multiplayer.get_unique_id(), ": Peer ", multiplayer.get_remote_sender_id(), " requested resource: ", resource_id)
+	
+	# Get resource data from OWDB
+	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
+		var resource_manager = owdb.node_monitor.resource_manager
+		if resource_manager.resource_registry.has(resource_id):
+			var resource_info = resource_manager.resource_registry[resource_id]
+			var resource_data = {
+				"type": resource_info.resource_type,
+				"original_id": resource_info.original_id,
+				"file_path": resource_info.file_path,
+				"properties": resource_info.properties,
+				"content_hash": resource_info.content_hash
+			}
+			
+			var requester_id = multiplayer.get_remote_sender_id()
+			rpc_id(requester_id, "receive_resource", resource_id, resource_data)
+			print(multiplayer.get_unique_id(), ": Sent resource ", resource_id, " to peer ", requester_id)
+		else:
+			print(multiplayer.get_unique_id(), ": Resource not found: ", resource_id)
+
 @rpc("authority", "reliable")
-func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
+func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
+	print(multiplayer.get_unique_id(), ": Received resource: ", resource_id)
+	
+	# Register resource in local OWDB
+	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
+		var resource_manager = owdb.node_monitor.resource_manager
+		
+		var info = resource_manager.ResourceInfo.new(
+			resource_id, 
+			resource_data.get("type", ""), 
+			resource_data.get("content_hash", "")
+		)
+		info.original_id = resource_data.get("original_id", "")
+		info.file_path = resource_data.get("file_path", "")
+		info.properties = resource_data.get("properties", {})
+		
+		resource_manager.resource_registry[resource_id] = info
+		
+		if info.content_hash != "":
+			resource_manager.content_hash_to_id[info.content_hash] = resource_id
+	
+	# Check if any pending nodes can now be created
+	if _resource_requests.has(resource_id):
+		var waiting_nodes = _resource_requests[resource_id].duplicate()
+		_resource_requests.erase(resource_id)
+		
+		for node_name in waiting_nodes:
+			if _pending_nodes.has(node_name):
+				var node_data = _pending_nodes[node_name]
+				node_data.missing_resources.erase(resource_id)
+				
+				# If all resources are now available, create the node
+				if node_data.missing_resources.is_empty():
+					print(multiplayer.get_unique_id(), ": All resources received for node: ", node_name)
+					_create_pending_node(node_name)
+
+@rpc("authority", "reliable")
+func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
 	if _sync_nodes.has(node_name):
 		print(multiplayer.get_unique_id(), ": taking control of existing node ", node_name)
 		var sync_data = _sync_nodes[node_name]
 		sync_data.peer_id = peer_id
 		sync_data.parent.position = position
 		sync_data.parent.rotation = rotation
+		sync_data.parent.scale = scale
 		sync_data.synced_values = initial_variables
 		sync_data.is_pre_existing = false
 		
@@ -434,17 +580,34 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		return
 	
 	print(multiplayer.get_unique_id(), ": add_node ", node_name, " at path: ", parent_path)
-	nodes.add_id(
-		node_name,
-		scene,
-		parent_path,
-		func(entity: Node) -> void:
-			entity_sync_setup(entity, scene, position, rotation, peer_id, initial_variables)
-	)
+	
+	# Store node creation data
+	_pending_nodes[node_name] = {
+		"scene": scene,
+		"peer_id": peer_id,
+		"position": position,
+		"rotation": rotation,
+		"scale": scale,
+		"initial_variables": initial_variables,
+		"parent_path": parent_path
+	}
+	
+	# Check if we need any resources before creating the node
+	_check_and_request_resources(node_name, initial_variables)
 
 @rpc("authority", "reliable")
 func remove_node(node_name: String) -> void:
 	print(multiplayer.get_unique_id(), ": remove_node ", node_name)
+	
+	# Clean up pending node data if it exists
+	_pending_nodes.erase(node_name)
+	
+	# Remove from resource requests
+	for resource_id in _resource_requests:
+		_resource_requests[resource_id].erase(node_name)
+		if _resource_requests[resource_id].is_empty():
+			_resource_requests.erase(resource_id)
+	
 	nodes.remove(node_name)
 
 @rpc("any_peer", "reliable")
@@ -490,7 +653,7 @@ func handle_peer_disconnected(peer_id: int) -> void:
 				unregister_node(sync_data.parent)
 			nodes.remove(node_name)
 
-# UPDATED: No longer automatically adds Sync component
+# UPDATED: Apply properties with resource support for OWDB entities
 func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: Vector3, peer_id: int, initial_variables: Dictionary) -> void:
 	node.position = position
 	node.rotation = rotation
@@ -501,3 +664,8 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 		sync_component.peer_id = peer_id
 		sync_component.synced_values = initial_variables
 	
+	# Apply properties - use OWDB's system if available and properties exist
+	if owdb and not initial_variables.is_empty():
+		# Use OWDB's property application system which handles resources
+		owdb.node_monitor.apply_stored_properties(node, initial_variables)
+		print(multiplayer.get_unique_id(), ": Applied OWDB properties with resources to: ", node.name)

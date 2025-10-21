@@ -122,22 +122,7 @@ text = "Join"
 script = ExtResource("2_x0vdw")
 chunk_sizes = Array[float]([1.0, 2.0, 4.0])
 threshold_ratio = 0.75
-chunk_load_range = 5
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
-
-[node name="Box-1760844864459_8738" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.700281, 0, -3.0486422)
-script = ExtResource("5_uvjsd")
-metadata/_owd_uid = "Box-1760844864459_8738"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.0295
-
-[node name="Box-1760844861398_2215" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.6027355, 0, 5.786313)
-script = ExtResource("5_uvjsd")
-metadata/_owd_uid = "Box-1760844861398_2215"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.0295
 
 [node name="Box-1760844858466_5483" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12036371, 0, 2.4958313)
@@ -153,10 +138,31 @@ metadata/_owd_uid = "Box-1760844859867_3539"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.0295
 
+[node name="MeshInstance3D-1761018600463_4814" type="MeshInstance3D" parent="OpenWorldDatabase"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+mesh = SubResource("SphereMesh_uvjsd")
+metadata/_owd_uid = "MeshInstance3D-1761018600463_4814"
+metadata/_owd_last_scale = Vector3(2, 2, 2)
+metadata/_owd_last_size = 1.9999996
+
 [node name="Box-1760844872549_1893" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.501694, 0, -0.9419403)
 script = ExtResource("5_uvjsd")
 metadata/_owd_uid = "Box-1760844872549_1893"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box-1760844861398_2215" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.6027355, 0, 5.786313)
+script = ExtResource("5_uvjsd")
+metadata/_owd_uid = "Box-1760844861398_2215"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box-1760844875828_9979" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.745017, 0, 4.5455446)
+script = ExtResource("5_uvjsd")
+metadata/_owd_uid = "Box-1760844875828_9979"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.0295
 
@@ -166,28 +172,9 @@ metadata/_owd_uid = "Box9-1760846945559_3135"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0
 
-[node name="Box3-1760846945559_9093" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_uvjsd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.780533, -1.4500065, 5.2208214)
-metadata/_owd_uid = "Box3-1760846945559_9093"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
-
-[node name="Box-1760844875828_9979" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.745017, 0, 4.5455446)
-script = ExtResource("5_uvjsd")
-metadata/_owd_uid = "Box-1760844875828_9979"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.0295
-
-[node name="MeshInstance3D-1761018600463_4814" type="MeshInstance3D" parent="OpenWorldDatabase"]
-mesh = SubResource("SphereMesh_uvjsd")
-metadata/_owd_uid = "MeshInstance3D-1761018600463_4814"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.9999998
-
-[node name="Box8-1760846945559_3672" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_uvjsd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.765934, -1.4500046, 3.2866268)
-metadata/_owd_uid = "Box8-1760846945559_3672"
+[node name="Box6-1760846945559_6232" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.369802, -1.4500027, -2.70438)
+metadata/_owd_uid = "Box6-1760846945559_6232"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0
 

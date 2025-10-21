@@ -3,7 +3,7 @@ extends RefCounted
 class_name BatchProcessor
 
 var owdb: OpenWorldDatabase
-var parent_node: Node  # Add this to handle cases where owdb is null
+var parent_node: Node
 
 # Batch processing configuration
 var batch_time_limit_ms: float = 5.0
@@ -119,13 +119,46 @@ func _process_instantiate_scene_operation(operation: Dictionary) -> bool:
 	var parent_path = operation.data.get("parent_path", "")
 	var callback = operation.callback
 	
-	return _instantiate_scene_node(scene_path, node_name, parent_path, callback)
+	return _instantiate_node(scene_path, node_name, parent_path, callback)
 
 func _process_remove_node_operation(operation: Dictionary) -> bool:
 	var node_name = operation.data.get("node_name", "")
 	return _remove_scene_node(node_name)
 
-# OWDB node loading (consolidated from main class)
+# Consolidated node instantiation (handles both scenes and node types)
+func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
+	var parent_node_target = _get_parent_node_for_instantiation(parent_path)
+	if not parent_node_target:
+		return false
+	
+	var new_node: Node
+	
+	# Use the same logic as _immediate_load_node for consistency
+	if node_source.begins_with("res://"):
+		var scene = load(node_source)
+		if not scene:
+			_debug_log("Failed to load scene: " + node_source)
+			return false
+		new_node = scene.instantiate()
+	else:
+		new_node = ClassDB.instantiate(node_source)
+		if not new_node:
+			_debug_log("Failed to create node of type: " + node_source)
+			return false
+	
+	new_node.name = node_name
+	
+	if callback.is_valid():
+		callback.call(new_node)
+	
+	parent_node_target.add_child(new_node)
+	
+	# Register with Syncer if available and not in editor
+	if not Engine.is_editor_hint() and Syncer and (Syncer.has_method("is_placeholder") and not Syncer.is_placeholder()):
+		if not Syncer.is_node_registered(new_node):
+			Syncer.register_node(new_node, node_source, 1, {}, null)
+	
+	return true
 
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
@@ -135,30 +168,25 @@ func _immediate_load_node(uid: String):
 		return
 		
 	var node_info = owdb.node_monitor.stored_nodes[uid]
-	var new_node: Node
+	var new_node = _create_node_from_source(node_info.scene)
 	
-	if node_info.scene.begins_with("res://"):
-		var scene = load(node_info.scene)
-		new_node = scene.instantiate()
-	else:
-		new_node = ClassDB.instantiate(node_info.scene)
-		if not new_node:
-			print("Failed to create node of type: ", node_info.scene)
-			return
+	if not new_node:
+		_debug_log("Failed to create node for UID: " + uid)
+		return
 	
 	new_node.set_meta("_owd_uid", uid)
 	new_node.name = uid
 	
-	var parent_node = owdb
+	var parent_node_target = owdb
 	if node_info.parent_uid != "":
 		var parent = owdb.loaded_nodes_by_uid.get(node_info.parent_uid)
 		if parent:
-			parent_node = parent
+			parent_node_target = parent
 	
 	# Apply properties using resource manager
 	owdb.node_monitor.apply_stored_properties(new_node, node_info.properties)
 	
-	parent_node.add_child(new_node)
+	parent_node_target.add_child(new_node)
 	new_node.owner = owdb.owner
 	
 	if new_node is Node3D:
@@ -170,7 +198,17 @@ func _immediate_load_node(uid: String):
 	owdb._setup_listeners(new_node)
 	
 	_debug_log("NODE LOADED: " + uid + " at " + str(node_info.position))
-	
+
+# Consolidated node creation logic
+func _create_node_from_source(node_source: String) -> Node:
+	if node_source.begins_with("res://"):
+		var scene = load(node_source)
+		if not scene:
+			return null
+		return scene.instantiate()
+	else:
+		return ClassDB.instantiate(node_source)
+
 func _immediate_unload_node(uid: String):
 	if not owdb:
 		return
@@ -194,28 +232,6 @@ func _immediate_unload_node(uid: String):
 	owdb.call_deferred("_cleanup_unload_tracking", uid)
 	_debug_log("NODE UNLOADED: " + uid)
 
-# Scene instantiation (from Nodes class)
-func _instantiate_scene_node(scene_path: String, node_name: String, parent_path: String, callback: Callable) -> bool:
-	var parent_node = _get_parent_node_for_scene(parent_path)
-	if not parent_node:
-		return false
-	
-	var entity_scene = load(scene_path)
-	var entity_instance = entity_scene.instantiate()
-	entity_instance.name = node_name
-	
-	if callback.is_valid():
-		callback.call(entity_instance)
-		
-	parent_node.add_child(entity_instance)
-	
-	# Register with Syncer if available and not in editor
-	if not Engine.is_editor_hint() and Syncer and (Syncer.has_method("is_placeholder") and not Syncer.is_placeholder()):
-		if not Syncer.is_node_registered(entity_instance):
-			Syncer.register_node(entity_instance, scene_path, 1, {}, null)
-	
-	return true
-
 func _remove_scene_node(node_name: String) -> bool:
 	var tree = _get_scene_tree()
 	if not tree or not tree.current_scene:
@@ -227,7 +243,7 @@ func _remove_scene_node(node_name: String) -> bool:
 		return true
 	return false
 
-func _get_parent_node_for_scene(parent_path: String) -> Node:
+func _get_parent_node_for_instantiation(parent_path: String) -> Node:
 	var tree = _get_scene_tree()
 	if not tree or not tree.current_scene:
 		return null
@@ -235,12 +251,12 @@ func _get_parent_node_for_scene(parent_path: String) -> Node:
 	if parent_path.is_empty():
 		return tree.current_scene
 	
-	var parent_node = tree.current_scene.get_node(parent_path)
-	if not parent_node:
+	var parent_node_result = tree.current_scene.get_node(parent_path)
+	if not parent_node_result:
 		push_error("Parent path not found: " + parent_path)
 		return tree.current_scene
 	
-	return parent_node
+	return parent_node_result
 
 # Validation methods
 func _is_load_operation_valid(uid: String) -> bool:
@@ -308,7 +324,7 @@ func instantiate_scene(scene_path: String, node_name: String, parent_path: Strin
 			"parent_path": parent_path
 		}, callback)
 	else:
-		_instantiate_scene_node(scene_path, node_name, parent_path, callback)
+		_instantiate_node(scene_path, node_name, parent_path, callback)
 		return node_name
 
 func remove_scene_node(node_name: String):
