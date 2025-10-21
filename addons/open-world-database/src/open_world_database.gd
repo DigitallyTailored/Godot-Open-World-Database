@@ -31,8 +31,12 @@ const SKIP_PROPERTIES = [
 @export var batch_time_limit_ms: float = 5.0
 @export var batch_interval_ms: float = 100.0
 
-@export_group("Debug")
+# Editor Camera Following
+@export_group("Editor")
+@export var follow_editor_camera: bool = true
 @export_tool_button("debug info", "Debug") var debug_action = debug
+
+@export_group("Debug")
 @export var debug_enabled: bool = false
 
 var chunk_lookup: Dictionary = {} # [Size][Vector2i] -> Array[String] (UIDs)
@@ -48,6 +52,11 @@ var nodes_being_unloaded: Dictionary = {} # uid -> true
 # Network state
 var current_network_mode: NetworkMode = NetworkMode.STANDALONE
 var _multiplayer_connected: bool = false
+
+# Editor camera following
+var _editor_camera_position: OWDBPosition = null
+var _last_follow_state: bool = false
+var _editor_camera: Camera3D = null
 
 # Add this getter
 func get_size_thresholds() -> Array[float]:
@@ -80,12 +89,69 @@ func _ready() -> void:
 	
 	# Register with Syncer autoload if it exists
 	call_deferred("_register_with_syncer")
+	
+	# Handle editor camera following
+	if Engine.is_editor_hint():
+		_last_follow_state = follow_editor_camera
+		call_deferred("_update_editor_camera_following")
+
+func _process(_delta):
+	if Engine.is_editor_hint():
+		if follow_editor_camera != _last_follow_state:
+			_last_follow_state = follow_editor_camera
+			_update_editor_camera_following()
+
+func _update_editor_camera_following():
+	if follow_editor_camera and not _editor_camera_position:
+		_create_editor_camera_position()
+	elif not follow_editor_camera and _editor_camera_position:
+		_remove_editor_camera_position()
+
+func _get_editor_camera() -> Camera3D:
+	if not Engine.is_editor_hint():
+		return null
+	
+	var editor_viewport = EditorInterface.get_editor_viewport_3d(0)
+	if editor_viewport:
+		return editor_viewport.get_camera_3d()
+	
+	return null
+
+func _create_editor_camera_position():
+	if _editor_camera_position:
+		return
+	
+	_editor_camera = _get_editor_camera()
+	if not _editor_camera:
+		debug_log("Could not find editor camera")
+		return
+	
+	_editor_camera_position = OWDBPosition.new()
+	_editor_camera_position.name = "EditorCameraPosition"
+	
+	# Add as child of the editor camera
+	_editor_camera.add_child(_editor_camera_position)
+	
+	# Position at origin relative to camera (since it's a child, it will follow automatically)
+	_editor_camera_position.position = Vector3.ZERO
+	
+	debug_log("Created editor camera OWDBPosition node under editor camera")
+
+func _remove_editor_camera_position():
+	if _editor_camera_position and is_instance_valid(_editor_camera_position):
+		_editor_camera_position.queue_free()
+		_editor_camera_position = null
+		_editor_camera = null
+		debug_log("Removed editor camera OWDBPosition node")
 
 func _register_with_syncer():
 	Syncer.register_owdb(self)
 	debug_log("OWDB registered with Syncer")
 	
 func _exit_tree():
+	# Clean up editor camera position
+	_remove_editor_camera_position()
+	
 	# Unregister from Syncer when OWDB is destroyed
 	Syncer.unregister_owdb()
 	debug_log("OWDB unregistered from Syncer")
@@ -374,6 +440,10 @@ func debug():
 	print(multiplayer.get_unique_id(), ": Nodes currently loaded: ", get_currently_loaded_nodes())
 	print(multiplayer.get_unique_id(), ": Total nodes in database: ", get_total_database_nodes())
 	print(multiplayer.get_unique_id(), ": Active OWDBPosition nodes: ", get_active_position_count())
+	print(multiplayer.get_unique_id(), ": Follow Editor Camera: ", follow_editor_camera)
+	print(multiplayer.get_unique_id(), ": Editor Camera Position Node: ", _editor_camera_position != null)
+	if _editor_camera:
+		print(multiplayer.get_unique_id(), ": Editor Camera Position: ", _editor_camera.global_position)
 	var chunk_info = chunk_manager.get_chunk_requirement_info()
 	print(multiplayer.get_unique_id(), ": Chunks required: ", chunk_info.total_chunks_required)
 	print(multiplayer.get_unique_id(), ": Chunks loaded: ", chunk_info.chunks_loaded)
