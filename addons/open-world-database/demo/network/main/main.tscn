@@ -1,8 +1,11 @@
-[gd_scene load_steps=10 format=3 uid="uid://c7vmppndoqev5"]
+[gd_scene load_steps=13 format=3 uid="uid://c7vmppndoqev5"]
 
 [ext_resource type="Script" uid="uid://ckgq8twwf3wk1" path="res://addons/open-world-database/demo/network/main/main.gd" id="1_itjsd"]
 [ext_resource type="Script" uid="uid://c51vw17uqaabu" path="res://addons/open-world-database/demo/network/main/fps.gd" id="2_bpdpu"]
 [ext_resource type="Script" uid="uid://b46e3mat8dx5" path="res://addons/open-world-database/src/open_world_database.gd" id="2_x0vdw"]
+[ext_resource type="PackedScene" uid="uid://degr4dim7tvvv" path="res://addons/open-world-database/demo/network/test/box.tscn" id="4_uvjsd"]
+[ext_resource type="Script" uid="uid://b3a6a5taht1is" path="res://addons/open-world-database/demo/network/test/box.gd" id="5_dinxd"]
+[ext_resource type="PackedScene" uid="uid://bk5mvnc2bfyom" path="res://addons/open-world-database/demo/network/test/boxDumb.tscn" id="6_e52gm"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wi4fq"]
 sky_top_color = Color(0.077850975, 0.44443423, 0.82337976, 1)
@@ -117,8 +120,49 @@ text = "Join"
 script = ExtResource("2_x0vdw")
 chunk_sizes = Array[float]([1.0, 2.0, 4.0])
 threshold_ratio = 0.75
-follow_editor_camera = false
+chunk_load_range = 5
+batch_processing_enabled = false
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
+
+[node name="Box-1760844858466_5483" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12036371, 0, 2.4958313)
+script = ExtResource("5_dinxd")
+metadata/_owd_uid = "Box-1760844858466_5483"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box-1760844859867_3539" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8249817, 0, -1.5493)
+script = ExtResource("5_dinxd")
+metadata/_owd_uid = "Box-1760844859867_3539"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box-1760844872549_1893" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.501694, 0, -0.9419403)
+script = ExtResource("5_dinxd")
+metadata/_owd_uid = "Box-1760844872549_1893"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box-1760844875828_9979" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.745017, 0, 4.5455446)
+script = ExtResource("5_dinxd")
+metadata/_owd_uid = "Box-1760844875828_9979"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0295
+
+[node name="Box6-1760846945559_6232" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_e52gm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.369802, -1.4500027, -2.70438)
+metadata/_owd_uid = "Box6-1760846945559_6232"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
+
+[node name="Box5-1760846945559_6898" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_e52gm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.904289, -1.4500046, 1.7613602)
+metadata/_owd_uid = "Box5-1760846945559_6898"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
 
 [node name="SyncNodes" type="Node" parent="."]
 

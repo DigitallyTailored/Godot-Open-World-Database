@@ -16,9 +16,41 @@ const SKIP_PROPERTIES = [
 	"script", "transform", "global_transform", "global_position", "global_rotation"
 ]
 
-@export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
-@export var threshold_ratio: float = 0.25
-@export var chunk_load_range: int = 3
+# Private variables to hold the actual values
+var _chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
+var _threshold_ratio: float = 0.25
+var _chunk_load_range: int = 3
+
+# Export properties with setters for dynamic changes
+@export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]:
+	set(value):
+		if not _arrays_equal(_chunk_sizes, value) and Engine.is_editor_hint() and is_inside_tree():
+			_chunk_sizes = value
+			_handle_editor_property_change("chunk_sizes")
+		else:
+			_chunk_sizes = value
+	get:
+		return _chunk_sizes
+
+@export var threshold_ratio: float = 0.25:
+	set(value):
+		if _threshold_ratio != value and Engine.is_editor_hint() and is_inside_tree():
+			_threshold_ratio = value
+			_handle_editor_property_change("threshold_ratio")
+		else:
+			_threshold_ratio = value
+	get:
+		return _threshold_ratio
+
+@export var chunk_load_range: int = 3:
+	set(value):
+		if _chunk_load_range != value and Engine.is_editor_hint() and is_inside_tree():
+			_chunk_load_range = value
+			_handle_editor_property_change("chunk_load_range")
+		else:
+			_chunk_load_range = value
+	get:
+		return _chunk_load_range
 
 # Network integration
 @export_group("Network Settings")
@@ -58,11 +90,90 @@ var _editor_camera_position: OWDBPosition = null
 var _last_follow_state: bool = false
 var _editor_camera: Camera3D = null
 
-# Add this getter
+# Helper function to compare arrays
+func _arrays_equal(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		if a[i] != b[i]:
+			return false
+	return true
+
+# Handle dynamic property changes in editor - complete reset
+func _handle_editor_property_change(property_name: String):
+	debug_log("Editor property '" + property_name + "' changed - performing complete reset with batch processing FORCED OFF")
+	
+	# Store the original batch processing setting
+	var original_batch_enabled = batch_processing_enabled
+	
+	# Complete reset with batch processing explicitly disabled
+	call_deferred("_complete_reset_with_batch_disabled", original_batch_enabled)
+
+func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
+	# Clean up editor camera position if it exists
+	_remove_editor_camera_position()
+	
+	# FORCE disable batch processing before anything else
+	batch_processing_enabled = false
+	
+	# Perform complete reset with forced batch processing disabled
+	_reset_with_batch_disabled()
+	
+	# Load database with new settings (instant due to forced batch processing disabled)
+	is_loading = true
+	database.load_database()
+	is_loading = false
+	
+	# Double-check that no batch operations are pending
+	if batch_processor:
+		batch_processor.force_process_queues()
+	
+	debug_log("Reset complete with batch processing FORCED OFF - restoring original setting: " + str(original_batch_enabled))
+	
+	# Now restore original batch processing setting
+	batch_processing_enabled = original_batch_enabled
+	update_batch_settings()
+	
+	# Restore editor camera if it was enabled
+	if Engine.is_editor_hint():
+		_last_follow_state = follow_editor_camera
+		_update_editor_camera_following()
+	
+	# Re-register with Syncer if available (runtime only)
+	if not Engine.is_editor_hint():
+		call_deferred("_register_with_syncer")
+	
+	debug_log("Complete reset finished - batch processing restored to: " + str(batch_processing_enabled))
+
+# Special reset function that forces batch processing OFF
+func _reset_with_batch_disabled():
+	is_loading = true
+	nodes_being_unloaded.clear()
+	loaded_nodes_by_uid.clear()
+	NodeUtils.remove_children(self)
+	
+	chunk_manager = ChunkManager.new(self)
+	node_monitor = NodeMonitor.new(self)
+	database = Database.new(self)
+	node_handler = NodeHandler.new(self)
+	batch_processor = BatchProcessor.new(self)
+	
+	# FORCE batch processing settings to be disabled
+	batch_processor.batch_time_limit_ms = batch_time_limit_ms
+	batch_processor.batch_interval_ms = batch_interval_ms
+	batch_processor.batch_processing_enabled = false  # FORCE to false regardless of the property
+	
+	_setup_listeners(self)
+	batch_processor.setup()
+	
+	debug_log("Reset complete - batch processing FORCED OFF for property change")
+	is_loading = false
+
+# Add this getter (using private variable)
 func get_size_thresholds() -> Array[float]:
 	var thresholds: Array[float] = []
-	for chunk_size in chunk_sizes:
-		thresholds.append(chunk_size * threshold_ratio)
+	for chunk_size in _chunk_sizes:
+		thresholds.append(chunk_size * _threshold_ratio)
 	return thresholds
 	
 func debug_log(message: String, value = null):
@@ -87,8 +198,9 @@ func _ready() -> void:
 	# Initial network mode determination
 	_update_network_mode()
 	
-	# Register with Syncer autoload if it exists
-	call_deferred("_register_with_syncer")
+	# Register with Syncer autoload if it exists (runtime only)
+	if not Engine.is_editor_hint():
+		call_deferred("_register_with_syncer")
 	
 	# Handle editor camera following
 	if Engine.is_editor_hint():
@@ -145,16 +257,22 @@ func _remove_editor_camera_position():
 		debug_log("Removed editor camera OWDBPosition node")
 
 func _register_with_syncer():
-	Syncer.register_owdb(self)
-	debug_log("OWDB registered with Syncer")
+	# Only register in runtime, not in editor
+	if Engine.is_editor_hint():
+		return
+		
+	if Syncer and not Syncer.is_placeholder():
+		Syncer.register_owdb(self)
+		debug_log("OWDB registered with Syncer")
 	
 func _exit_tree():
 	# Clean up editor camera position
 	_remove_editor_camera_position()
 	
-	# Unregister from Syncer when OWDB is destroyed
-	Syncer.unregister_owdb()
-	debug_log("OWDB unregistered from Syncer")
+	# Unregister from Syncer when OWDB is destroyed (runtime only)
+	if not Engine.is_editor_hint() and Syncer and not Syncer.is_placeholder():
+		Syncer.unregister_owdb()
+		debug_log("OWDB unregistered from Syncer")
 		
 func _setup_multiplayer_signals():
 	if not multiplayer:
@@ -242,6 +360,7 @@ func is_network_host() -> bool:
 func is_network_peer() -> bool:
 	return current_network_mode == NetworkMode.PEER
 
+# Keep the original reset function for normal use
 func reset():
 	is_loading = true
 	nodes_being_unloaded.clear()
@@ -283,7 +402,7 @@ func get_node_by_uid(uid: String) -> Node:
 
 func add_to_chunk_lookup(uid: String, position: Vector3, size: float):
 	var size_cat = get_size_category(size)
-	var chunk_pos = NodeUtils.get_chunk_position(position, chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
+	var chunk_pos = NodeUtils.get_chunk_position(position, _chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
 	
 	if not chunk_lookup.has(size_cat):
 		chunk_lookup[size_cat] = {}
@@ -295,7 +414,7 @@ func add_to_chunk_lookup(uid: String, position: Vector3, size: float):
 
 func remove_from_chunk_lookup(uid: String, position: Vector3, size: float):
 	var size_cat = get_size_category(size)
-	var chunk_pos = NodeUtils.get_chunk_position(position, chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
+	var chunk_pos = NodeUtils.get_chunk_position(position, _chunk_sizes[size_cat]) if size_cat != Size.ALWAYS_LOADED else ALWAYS_LOADED_CHUNK_POS
 	
 	if chunk_lookup.has(size_cat) and chunk_lookup[size_cat].has(chunk_pos):
 		chunk_lookup[size_cat][chunk_pos].erase(uid)
@@ -447,6 +566,10 @@ func debug():
 	var chunk_info = chunk_manager.get_chunk_requirement_info()
 	print(multiplayer.get_unique_id(), ": Chunks required: ", chunk_info.total_chunks_required)
 	print(multiplayer.get_unique_id(), ": Chunks loaded: ", chunk_info.chunks_loaded)
+	print(multiplayer.get_unique_id(), ": Current chunk_sizes: ", _chunk_sizes)
+	print(multiplayer.get_unique_id(), ": Current threshold_ratio: ", _threshold_ratio)
+	print(multiplayer.get_unique_id(), ": Current chunk_load_range: ", _chunk_load_range)
+	print(multiplayer.get_unique_id(), ": Batch processing enabled: ", batch_processing_enabled)
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():
