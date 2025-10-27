@@ -29,10 +29,10 @@ class SyncNodeData:
 	var parent_path: String
 	var peer_id: int
 	var synced_values: Dictionary
-	var sync_component: Sync = null  # null if no Sync component
+	var sync_component: OWDBSync = null  # null if no OWDBSync component
 	var is_pre_existing: bool = false
 	
-	func _init(node: Node3D, scene: String, name: String, path: String, peer: int, values: Dictionary, sync_comp: Sync = null):
+	func _init(node: Node3D, scene: String, name: String, path: String, peer: int, values: Dictionary, sync_comp: OWDBSync = null):
 		parent = node
 		parent_scene = scene
 		parent_name = name
@@ -251,8 +251,8 @@ func _process(_delta: float) -> void:
 func is_node_registered(node: Node3D) -> bool:
 	return _sync_nodes.has(node.name)
 
-# NEW: Universal node registration (works with or without Sync component)
-func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_values: Dictionary = {}, sync_component: Sync = null) -> void:
+# NEW: Universal node registration (works with or without OWDBSync component)
+func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_values: Dictionary = {}, sync_component: OWDBSync = null) -> void:
 	var node_name = node.name
 	var node_scene = scene if scene != "" else (node.scene_file_path if node.scene_file_path != "" else node.get_class())
 	var node_path = node.get_parent().get_path()
@@ -262,7 +262,7 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 	
 	_sync_nodes[node_name] = sync_data
 	
-	print(multiplayer.get_unique_id(), ": Registered node: ", node_name, " (has Sync: ", sync_component != null, ")")
+	print(multiplayer.get_unique_id(), ": Registered node: ", node_name, " (has OWDBSync: ", sync_component != null, ")")
 	
 	# Connect to node signals for automatic cleanup
 	if not node.tree_exiting.is_connected(_on_node_tree_exiting):
@@ -330,18 +330,18 @@ func sync_variables(node_name: String, variables_in: Dictionary, force_send_to_a
 	else:
 		rpc_id(1, "update_node", node_name, variables_in)
 
-# NEW: Apply variables to nodes (handles both with and without Sync component)
+# NEW: Apply variables to nodes (handles both with and without OWDBSync component)
 func _apply_variables_to_node(sync_data: SyncNodeData, variables: Dictionary):
 	if sync_data.sync_component:
-		# Let Sync component handle it
+		# Let OWDBSync component handle it
 		sync_data.sync_component.variables_receive(variables)
 	else:
-		# Handle it directly for nodes without Sync
+		# Handle it directly for nodes without OWDBSync
 		var converted_variables = _convert_short_keys_to_properties(variables)
 		for key in converted_variables:
 			_set_node_property(sync_data.parent, key, converted_variables[key])
 
-# NEW: Direct property setting for nodes without Sync component
+# NEW: Direct property setting for nodes without OWDBSync component
 func _set_node_property(node: Node3D, property_name: String, value):
 	match property_name:
 		"position": node.position = value
@@ -658,8 +658,8 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 	node.position = position
 	node.rotation = rotation
 	
-	# Check if node already has a Sync component
-	var sync_component = node.find_child("Sync")
+	# Check if node already has a OWDBSync component
+	var sync_component = node.find_child("OWDBSync")
 	if sync_component:
 		sync_component.peer_id = peer_id
 		sync_component.synced_values = initial_variables

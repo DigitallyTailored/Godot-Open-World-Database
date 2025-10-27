@@ -1,7 +1,7 @@
+# demo/player.gd
 # Movement-based synchronization
 # This player demonstrates selective sync - only send updates when meaningful changes occur  
 
-# scenes/player/player.gd
 extends CharacterBody3D
 
 # Movement parameters
@@ -12,7 +12,6 @@ extends CharacterBody3D
 var position_old : Vector3
 
 func _host_physics_process(delta):
-		
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	
@@ -32,4 +31,4 @@ func _host_physics_process(delta):
 
 	if position.distance_squared_to(position_old) > 0.25:
 		position_old = position
-		$Sync.output(["position", "rotation.y"])
+		$OWDBSync.output(["position", "rotation.y"])

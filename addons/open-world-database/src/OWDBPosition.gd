@@ -1,3 +1,4 @@
+# src/OWDBPosition.gd
 @tool
 extends Node3D
 class_name OWDBPosition
@@ -6,7 +7,7 @@ var last_position: Vector3 = Vector3.INF
 var owdb: OpenWorldDatabase
 var position_id: String = ""
 var _cached_peer_id: int = -1  # Cache to detect changes
-var _sync_node: Sync = null  # Cache the sync node reference
+var _sync_node: OWDBSync = null  # Cache the sync node reference
 
 func _ready():
 	_find_owdb()
@@ -25,34 +26,34 @@ func _exit_tree():
 	_unregister_from_syncer()
 
 func get_peer_id() -> int:
-	# Look for Sync node (check siblings first, then children as fallback)
+	# Look for OWDBSync node (check siblings first, then children as fallback)
 	var sync_node = _find_sync_node()
 	if sync_node:
 		return sync_node.peer_id
 	
-	# Default to server/host if no Sync node
+	# Default to server/host if no OWDBSync node
 	return 1
 
-func _find_sync_node() -> Sync:
+func _find_sync_node() -> OWDBSync:
 	# Check if we have a cached reference that's still valid
 	if _sync_node and is_instance_valid(_sync_node):
 		return _sync_node
 	
-	# Look for Sync node as sibling first
+	# Look for OWDBSync node as sibling first
 	var parent = get_parent()
 	if parent:
 		for sibling in parent.get_children():
-			if sibling is Sync:
+			if sibling is OWDBSync:
 				_sync_node = sibling
 				return _sync_node
 	
-	# Fallback: look for Sync node as child
+	# Fallback: look for OWDBSync node as child
 	for child in get_children():
-		if child is Sync:
+		if child is OWDBSync:
 			_sync_node = child
 			return _sync_node
 	
-	# Clear cache if no Sync node found
+	# Clear cache if no OWDBSync node found
 	_sync_node = null
 	return null
 
@@ -123,7 +124,7 @@ func force_update():
 func get_position_id() -> String:
 	return position_id
 
-# Public method to force a peer registration update (useful when Sync nodes are added dynamically)
+# Public method to force a peer registration update (useful when OWDBSync nodes are added dynamically)
 func refresh_peer_registration():
 	_cached_peer_id = -1  # Force update
 	_sync_node = null    # Clear cache

@@ -1,6 +1,6 @@
-# scenes/sync/sync.gd
+# src/network/OWDBSync.gd
 extends Node
-class_name Sync
+class_name OWDBSync
 
 signal input(variables)
 
@@ -35,8 +35,7 @@ func _ready():
 	
 	# Register with Syncer (Syncer handles the networking registration)
 	Syncer.register_node(parent, parent_scene, peer_id, synced_values, self)
-	$Label3D.text = parent_name
-	
+		
 	if !parent.has_method("_host_process"):
 		set_process(false)
 	if !parent.has_method("_host_physics_process"):

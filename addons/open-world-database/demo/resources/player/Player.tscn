@@ -5,7 +5,7 @@
 [ext_resource type="AudioStream" uid="uid://4fjrr2srfwda" path="res://addons/open-world-database/demo/resources/sound/swing.wav" id="3_1y1cw"]
 [ext_resource type="AudioStream" uid="uid://bbsr8dl0t4hes" path="res://addons/open-world-database/demo/resources/sound/gem.wav" id="4_1y1cw"]
 [ext_resource type="AudioStream" uid="uid://dbbx76qcmhdel" path="res://addons/open-world-database/demo/resources/sound/block.wav" id="4_ip1nt"]
-[ext_resource type="Script" uid="uid://buh6cddjkykg2" path="res://addons/open-world-database/src/owdb_position.gd" id="6_ip1nt"]
+[ext_resource type="Script" uid="uid://buh6cddjkykg2" path="res://addons/open-world-database/src/OWDBPosition.gd" id="6_ip1nt"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_rb33l"]
 radius = 0.30506

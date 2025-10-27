@@ -1,6 +1,5 @@
-# main.gd - Updated for networked OWDB
+# demo/main.gd - Updated for networked OWDB
 extends Node
-
 
 @onready var owdb = $OpenWorldDatabase  # Reference to OWDB
 
@@ -60,7 +59,7 @@ func _add_player(id: int) -> void:
 	var node_name = str(id)
 	var rng = RandomNumberGenerator.new()
 	
-	# Create player with both Sync and OWDBPosition
+	# Create player with both OWDBSync and OWDBPosition
 	var player_scene = load("res://addons/open-world-database/demo/network/player/player.tscn")
 	var player = player_scene.instantiate()
 	player.name = node_name
@@ -71,11 +70,11 @@ func _add_player(id: int) -> void:
 	)
 	
 	# Setup sync node
-	var sync_node = player.find_child("Sync")
+	var sync_node = player.find_child("OWDBSync")
 	if sync_node:
 		sync_node.peer_id = id
 	
-	# Setup OWDBPosition (it will automatically get the peer_id from Sync node)
+	# Setup OWDBPosition (it will automatically get the peer_id from OWDBSync node)
 	var owdb_position = player.find_child("OWDBPosition")
 	if owdb_position:
 		owdb_position.refresh_peer_registration()

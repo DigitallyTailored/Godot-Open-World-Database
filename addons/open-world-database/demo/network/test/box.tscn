@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://degr4dim7tvvv"]
 
 [ext_resource type="Script" uid="uid://b3a6a5taht1is" path="res://addons/open-world-database/demo/network/test/box.gd" id="1_c361l"]
-[ext_resource type="PackedScene" uid="uid://vl3ek4tfes44" path="res://addons/open-world-database/src/network/sync/Sync.tscn" id="1_nw8sj"]
+[ext_resource type="Script" uid="uid://3h882b2n4d1f" path="res://addons/open-world-database/src/network/OWDBSync.gd" id="2_i0jqr"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_oyhfb"]
 
@@ -24,4 +24,6 @@ fixed_size = true
 modulate = Color(1, 0.49, 0.49, 1)
 text = "0_0"
 
-[node name="Sync" parent="." instance=ExtResource("1_nw8sj")]
+[node name="OWDBSync" type="Node" parent="."]
+script = ExtResource("2_i0jqr")
+metadata/_custom_type_script = "uid://3h882b2n4d1f"
