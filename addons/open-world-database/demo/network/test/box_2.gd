@@ -1,6 +1,6 @@
 # demo/box2.gd
 # Automatic watch system approach  
-# This box demonstrates hands-off sync - just mark what to watch and it handles the rest
+# This box demonstrates a simpler sync method via script - just mark what to watch and it handles the rest
 
 extends Node3D
 

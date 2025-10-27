@@ -1,8 +1,12 @@
-[gd_scene load_steps=10 format=3 uid="uid://c7vmppndoqev5"]
+[gd_scene load_steps=15 format=3 uid="uid://c7vmppndoqev5"]
 
 [ext_resource type="Script" uid="uid://ckgq8twwf3wk1" path="res://addons/open-world-database/demo/network/main/main.gd" id="1_itjsd"]
 [ext_resource type="Script" uid="uid://c51vw17uqaabu" path="res://addons/open-world-database/demo/network/main/fps.gd" id="2_bpdpu"]
 [ext_resource type="Script" uid="uid://b46e3mat8dx5" path="res://addons/open-world-database/src/open_world_database.gd" id="2_x0vdw"]
+[ext_resource type="PackedScene" uid="uid://degr4dim7tvvv" path="res://addons/open-world-database/demo/network/test/box.tscn" id="4_my76s"]
+[ext_resource type="Script" uid="uid://b3a6a5taht1is" path="res://addons/open-world-database/demo/network/test/box.gd" id="5_uvjsd"]
+[ext_resource type="PackedScene" uid="uid://bk5mvnc2bfyom" path="res://addons/open-world-database/demo/network/test/boxDumb.tscn" id="6_uvjsd"]
+[ext_resource type="PackedScene" uid="uid://n4miil7aybje" path="res://addons/open-world-database/demo/network/test/box3.tscn" id="7_dinxd"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wi4fq"]
 sky_top_color = Color(0.077850975, 0.44443423, 0.82337976, 1)
@@ -27,6 +31,8 @@ albedo_color = Color(0.22526717, 0.514487, 0.43196374, 1)
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wi4fq"]
 points = PackedVector3Array(-500, -0.05, -500, -500, 0.05, -500, 500, -0.05, -500, -500, -0.05, 500, -500, 0.05, 500, 500, 0.05, -500, 500, -0.05, 500, 500, 0.05, 500)
+
+[sub_resource type="SphereMesh" id="SphereMesh_e52gm"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_itjsd")
@@ -118,6 +124,58 @@ script = ExtResource("2_x0vdw")
 chunk_sizes = Array[float]([1.0, 2.0, 4.0])
 threshold_ratio = 0.75
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
+
+[node name="MeshInstance3D-1761018600463_4814" type="MeshInstance3D" parent="OpenWorldDatabase"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+mesh = SubResource("SphereMesh_e52gm")
+metadata/_owd_uid = "MeshInstance3D-1761018600463_4814"
+metadata/_owd_last_scale = Vector3(2, 2, 2)
+metadata/_owd_last_size = 1.9999996
+
+[node name="Box6-1760846945559_6232" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.369802, -1.4500027, -2.70438)
+metadata/_owd_uid = "Box6-1760846945559_6232"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
+
+[node name="Box-1760844859867_3539" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8249817, 0, -1.5493)
+script = ExtResource("5_uvjsd")
+metadata/_owd_uid = "Box-1760844859867_3539"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.398698
+
+[node name="Box-1760844872549_1893" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.501694, 0, -0.9419403)
+script = ExtResource("5_uvjsd")
+metadata/_owd_uid = "Box-1760844872549_1893"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.398698
+
+[node name="Box8-1760846945559_3672" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_uvjsd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.765934, -1.4500046, 3.2866268)
+metadata/_owd_uid = "Box8-1760846945559_3672"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
+
+[node name="Box-1760844858466_5483" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("4_my76s")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12036371, 0, 2.4958313)
+script = ExtResource("5_uvjsd")
+metadata/_owd_uid = "Box-1760844858466_5483"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.398698
+
+[node name="Box3-1761584556829_6499" parent="OpenWorldDatabase" instance=ExtResource("7_dinxd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.20133972, -1.4499993, -3.9758916)
+metadata/_owd_uid = "Box3-1761584556829_6499"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
+
+[node name="Box3-1761584562243_2221" parent="OpenWorldDatabase" instance=ExtResource("7_dinxd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.9953918, -1.4499998, 2.2776325)
+metadata/_owd_uid = "Box3-1761584562243_2221"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
 
 [node name="SyncNodes" type="Node" parent="."]
 

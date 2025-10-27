@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3 uid="uid://n4miil7aybje"]
+
+[ext_resource type="Script" uid="uid://cnmf7y321vlb3" path="res://addons/open-world-database/demo/network/test/box_3.gd" id="1_pjib4"]
+[ext_resource type="Script" uid="uid://3h882b2n4d1f" path="res://addons/open-world-database/src/network/OWDBSync.gd" id="2_1gk75"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_23rx7"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gsi2y"]
+albedo_color = Color(5.7275593e-06, 0.8452475, 0.22048911, 1)
+
+[node name="Box3" type="Node3D"]
+script = ExtResource("1_pjib4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_23rx7")
+surface_material_override/0 = SubResource("StandardMaterial3D_gsi2y")
+
+[node name="OWDBSync" type="Node" parent="."]
+script = ExtResource("2_1gk75")
+autowatch_parent_variables = Array[String](["position", "rotation"])
+metadata/_custom_type_script = "uid://3h882b2n4d1f"

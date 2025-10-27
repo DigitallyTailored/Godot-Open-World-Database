@@ -4,6 +4,9 @@ class_name OWDBSync
 
 signal input(variables)
 
+@export var autowatch_parent_variables : Array[String]
+@export var autowatch_interval_ms : int = 100
+
 var peer_id := 1
 var parent_scene := ""
 var parent_name := ""
@@ -40,6 +43,13 @@ func _ready():
 		set_process(false)
 	if !parent.has_method("_host_physics_process"):
 		set_physics_process(false)
+	
+	# Auto-setup watch system if variables are provided
+	if not autowatch_parent_variables.is_empty():
+		set_interval(autowatch_interval_ms)
+		
+		# Then setup watching (this will also populate values with any received data)
+		watch(autowatch_parent_variables)
 
 func _build_property_cache():
 	property_getters.clear()
