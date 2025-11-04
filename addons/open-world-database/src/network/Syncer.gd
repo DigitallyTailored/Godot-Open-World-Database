@@ -1,4 +1,5 @@
 # src/network/Syncer.gd
+@tool
 extends Node
 
 var nodes: Nodes
@@ -43,7 +44,8 @@ class SyncNodeData:
 
 func _ready() -> void:
 	nodes = load("res://addons/open-world-database/src/Nodes.gd").new(self)
-	print(multiplayer.get_unique_id(), ": SYNCER READY")
+	if owdb:
+		owdb.debug("SYNCER READY")
 	for key in transform_mappings:
 		reverse_mappings[transform_mappings[key]] = key
 
@@ -56,7 +58,7 @@ func register_owdb(owdb_instance: OpenWorldDatabase):
 		unregister_owdb()
 	
 	owdb = owdb_instance
-	print(multiplayer.get_unique_id(), ": SYNCER: OWDB registered - integration active")
+	owdb.debug("SYNCER: OWDB registered - integration active")
 	
 	if owdb.batch_processor and not owdb.batch_processor.batch_complete_callbacks.has(_on_owdb_batch_complete):
 		owdb.batch_processor.add_batch_complete_callback(_on_owdb_batch_complete)
@@ -65,7 +67,7 @@ func unregister_owdb():
 	if not owdb:
 		return
 	
-	print(multiplayer.get_unique_id(), ": SYNCER: OWDB unregistered")
+	owdb.debug("SYNCER: OWDB unregistered")
 	
 	if owdb.batch_processor and owdb.batch_processor.batch_complete_callbacks.has(_on_owdb_batch_complete):
 		owdb.batch_processor.remove_batch_complete_callback(_on_owdb_batch_complete)
@@ -92,7 +94,7 @@ func _update_entity_visibility_from_owdb():
 	if not multiplayer.is_server() or not owdb:
 		return
 	
-	print(multiplayer.get_unique_id(), ": Updating entity visibility from OWDB chunks...")
+	owdb.debug("Updating entity visibility from OWDB chunks...")
 	
 	for peer_id in _peer_positions:
 		var owdb_position = _peer_positions[peer_id]
@@ -129,15 +131,15 @@ func _update_entity_visibility_from_owdb():
 			if should_see and not currently_visible:
 				entity_peer_visible(peer_id, entity_name, true)
 				if _sync_nodes.has(entity_name):
-					print(multiplayer.get_unique_id(), ": Making sync entity ", entity_name, " visible to peer ", peer_id)
+					owdb.debug("Making sync entity ", entity_name, " visible to peer ", peer_id)
 				else:
-					print(multiplayer.get_unique_id(), ": Making OWDB entity ", entity_name, " visible to peer ", peer_id)
+					owdb.debug("Making OWDB entity ", entity_name, " visible to peer ", peer_id)
 			elif not should_see and currently_visible:
 				entity_peer_visible(peer_id, entity_name, false)
 				if _sync_nodes.has(entity_name):
-					print(multiplayer.get_unique_id(), ": Hiding sync entity ", entity_name, " from peer ", peer_id)
+					owdb.debug("Hiding sync entity ", entity_name, " from peer ", peer_id)
 				else:
-					print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
+					owdb.debug("Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
 # NEW: Update visibility for a single peer when they move
 func _update_single_peer_visibility(peer_id: int):
@@ -147,7 +149,7 @@ func _update_single_peer_visibility(peer_id: int):
 	if not _peer_positions.has(peer_id):
 		return
 	
-	print(multiplayer.get_unique_id(), ": Updating visibility for peer ", peer_id, " due to position change...")
+	owdb.debug("Updating visibility for peer ", peer_id, " due to position change...")
 	
 	# Get all entities that could be visible
 	var all_entities_to_check = {}
@@ -178,15 +180,15 @@ func _update_single_peer_visibility(peer_id: int):
 		if should_see and not currently_visible:
 			entity_peer_visible(peer_id, entity_name, true)
 			if _sync_nodes.has(entity_name):
-				print(multiplayer.get_unique_id(), ": Making sync entity ", entity_name, " visible to peer ", peer_id)
+				owdb.debug("Making sync entity ", entity_name, " visible to peer ", peer_id)
 			else:
-				print(multiplayer.get_unique_id(), ": Making OWDB entity ", entity_name, " visible to peer ", peer_id)
+				owdb.debug("Making OWDB entity ", entity_name, " visible to peer ", peer_id)
 		elif not should_see and currently_visible:
 			entity_peer_visible(peer_id, entity_name, false)
 			if _sync_nodes.has(entity_name):
-				print(multiplayer.get_unique_id(), ": Hiding sync entity ", entity_name, " from peer ", peer_id)
+				owdb.debug("Hiding sync entity ", entity_name, " from peer ", peer_id)
 			else:
-				print(multiplayer.get_unique_id(), ": Hiding OWDB entity ", entity_name, " from peer ", peer_id)
+				owdb.debug("Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
 # FIXED: Use OWDB's chunk system only for OWDB-managed entities
 func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node) -> bool:
@@ -234,18 +236,20 @@ func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node) -> bool
 
 func register_peer_position(peer_id: int, owdb_position: OWDBPosition):
 	_peer_positions[peer_id] = owdb_position
-	print(multiplayer.get_unique_id(), ": Registered OWDBPosition for peer: ", peer_id)
+	if owdb:
+		owdb.debug("Registered OWDBPosition for peer: ", peer_id)
 
 func unregister_peer_position(peer_id: int):
 	_peer_positions.erase(peer_id)
-	print(multiplayer.get_unique_id(), ": Unregistered OWDBPosition for peer: ", peer_id)
+	if owdb:
+		owdb.debug("Unregistered OWDBPosition for peer: ", peer_id)
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("ui_accept"):
-		print(multiplayer.get_unique_id(), ": sync_nodes: ", _sync_nodes.keys())
-		print(multiplayer.get_unique_id(), ": peer_nodes_observing: ", _peer_nodes_observing)
-		print(multiplayer.get_unique_id(), ": peer_positions: ", _peer_positions.keys())
-		print(multiplayer.get_unique_id(), ": owdb_registered: ", owdb != null)
+		owdb.debug("sync_nodes: ", _sync_nodes.keys())
+		owdb.debug("peer_nodes_observing: ", _peer_nodes_observing)
+		owdb.debug("peer_positions: ", _peer_positions.keys())
+		owdb.debug("owdb_registered: ", owdb != null)
 
 # NEW: Check if a node is already registered
 func is_node_registered(node: Node3D) -> bool:
@@ -262,7 +266,7 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 	
 	_sync_nodes[node_name] = sync_data
 	
-	print(multiplayer.get_unique_id(), ": Registered node: ", node_name, " (has OWDBSync: ", sync_component != null, ")")
+	owdb.debug("Registered node: ", node_name, " (has OWDBSync: ", sync_component != null, ")")
 	
 	# Connect to node signals for automatic cleanup
 	if not node.tree_exiting.is_connected(_on_node_tree_exiting):
@@ -294,7 +298,7 @@ func unregister_node(node: Node3D) -> void:
 				_peer_nodes_observing[peer_id].erase(node_name)
 	
 	_sync_nodes.erase(node_name)
-	print(multiplayer.get_unique_id(), ": Unregistered node: ", node_name)
+	owdb.debug("Unregistered node: ", node_name)
 
 # NEW: Handle node cleanup when it exits tree
 func _on_node_tree_exiting(node: Node3D):
@@ -426,7 +430,7 @@ func handle_client_connected_to_server() -> void:
 	for node_name in _sync_nodes.keys():
 		var sync_data = _sync_nodes[node_name]
 		if sync_data.is_pre_existing:
-			print(multiplayer.get_unique_id(), ": Transferring control of pre-existing node to server: ", node_name)
+			owdb.debug("Transferring control of pre-existing node to server: ", node_name)
 			sync_data.peer_id = 1
 			sync_data.is_pre_existing = false
 
@@ -435,12 +439,17 @@ func _check_and_request_resources(node_name: String, properties: Dictionary):
 	var missing_resources = []
 	_collect_missing_resource_ids(properties, missing_resources)
 	
+	owdb.debug("Checking resources for node: ", node_name)
+	owdb.debug("Properties: ", properties)
+	owdb.debug("Missing resources: ", missing_resources)
+	
 	if missing_resources.is_empty():
 		# All resources available, create the node immediately
+		owdb.debug("All resources available for: ", node_name)
 		_create_pending_node(node_name)
 		return
 	
-	print(multiplayer.get_unique_id(), ": Node ", node_name, " needs ", missing_resources.size(), " resources: ", missing_resources)
+	owdb.debug("Node ", node_name, " needs ", missing_resources.size(), " resources: ", missing_resources)
 	
 	# Store node data for later creation
 	if not _pending_nodes.has(node_name):
@@ -454,7 +463,7 @@ func _check_and_request_resources(node_name: String, properties: Dictionary):
 			_resource_requests[resource_id] = []
 			# Only request if we're not already requesting it
 			rpc_id(1, "request_resource", resource_id)
-			print(multiplayer.get_unique_id(), ": Requesting resource: ", resource_id)
+			owdb.debug("Requesting resource: ", resource_id)
 		
 		if not _resource_requests[resource_id].has(node_name):
 			_resource_requests[resource_id].append(node_name)
@@ -505,7 +514,7 @@ func request_resource(resource_id: String) -> void:
 	if not multiplayer.is_server():
 		return
 	
-	print(multiplayer.get_unique_id(), ": Peer ", multiplayer.get_remote_sender_id(), " requested resource: ", resource_id)
+	owdb.debug("Peer ", multiplayer.get_remote_sender_id(), " requested resource: ", resource_id)
 	
 	# Get resource data from OWDB
 	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
@@ -522,13 +531,13 @@ func request_resource(resource_id: String) -> void:
 			
 			var requester_id = multiplayer.get_remote_sender_id()
 			rpc_id(requester_id, "receive_resource", resource_id, resource_data)
-			print(multiplayer.get_unique_id(), ": Sent resource ", resource_id, " to peer ", requester_id)
+			owdb.debug("Sent resource ", resource_id, " to peer ", requester_id)
 		else:
-			print(multiplayer.get_unique_id(), ": Resource not found: ", resource_id)
+			owdb.debug("Resource not found: ", resource_id)
 
 @rpc("authority", "reliable")
 func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
-	print(multiplayer.get_unique_id(), ": Received resource: ", resource_id)
+	owdb.debug("Received resource: ", resource_id)
 	
 	# Register resource in local OWDB
 	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
@@ -560,13 +569,13 @@ func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
 				
 				# If all resources are now available, create the node
 				if node_data.missing_resources.is_empty():
-					print(multiplayer.get_unique_id(), ": All resources received for node: ", node_name)
+					owdb.debug("All resources received for node: ", node_name)
 					_create_pending_node(node_name)
 
 @rpc("authority", "reliable")
 func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
 	if _sync_nodes.has(node_name):
-		print(multiplayer.get_unique_id(), ": taking control of existing node ", node_name)
+		owdb.debug("taking control of existing node ", node_name)
 		var sync_data = _sync_nodes[node_name]
 		sync_data.peer_id = peer_id
 		sync_data.parent.position = position
@@ -579,7 +588,7 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		_apply_variables_to_node(sync_data, initial_variables)
 		return
 	
-	print(multiplayer.get_unique_id(), ": add_node ", node_name, " at path: ", parent_path)
+	owdb.debug("add_node ", node_name, " at path: ", parent_path)
 	
 	# Store node creation data
 	_pending_nodes[node_name] = {
@@ -597,7 +606,7 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 
 @rpc("authority", "reliable")
 func remove_node(node_name: String) -> void:
-	print(multiplayer.get_unique_id(), ": remove_node ", node_name)
+	owdb.debug("remove_node ", node_name)
 	
 	# Clean up pending node data if it exists
 	_pending_nodes.erase(node_name)
@@ -629,7 +638,7 @@ func handle_peer_connected(peer_id: int) -> void:
 		if not _peer_nodes_observing.has(peer_id):
 			_peer_nodes_observing[peer_id] = []
 		
-		print(multiplayer.get_unique_id(), ": Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
+		owdb.debug("Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
 		
 		if owdb:
 			call_deferred("_update_new_peer_visibility", peer_id)
@@ -668,4 +677,4 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 	if owdb and not initial_variables.is_empty():
 		# Use OWDB's property application system which handles resources
 		owdb.node_monitor.apply_stored_properties(node, initial_variables)
-		print(multiplayer.get_unique_id(), ": Applied OWDB properties with resources to: ", node.name)
+		owdb.debug("Applied OWDB properties with resources to: ", node.name)

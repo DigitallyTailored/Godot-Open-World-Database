@@ -68,7 +68,7 @@ var _chunk_load_range: int = 3
 
 @export_group("Debug")
 @export var debug_enabled: bool = false
-@export_tool_button("debug info", "Debug") var debug_action = debug
+@export_tool_button("debug info", "Debug") var debug_action = debugAll
 
 var chunk_lookup: Dictionary = {} # [Size][Vector2i] -> Array[String] (UIDs)
 var loaded_nodes_by_uid: Dictionary = {} # uid -> Node (cached for O(1) lookup)
@@ -100,7 +100,7 @@ func _arrays_equal(a: Array, b: Array) -> bool:
 
 # Handle dynamic property changes in editor - complete reset
 func _handle_editor_property_change(property_name: String):
-	debug_log("Editor property '" + property_name + "' changed - performing complete reset with batch processing FORCED OFF")
+	debug("Editor property '" + property_name + "' changed - performing complete reset with batch processing FORCED OFF")
 	
 	# Store the original batch processing setting
 	var original_batch_enabled = batch_processing_enabled
@@ -127,7 +127,7 @@ func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
 	if batch_processor:
 		batch_processor.force_process_queues()
 	
-	debug_log("Reset complete with batch processing FORCED OFF - restoring original setting: " + str(original_batch_enabled))
+	debug("Reset complete with batch processing FORCED OFF - restoring original setting: " + str(original_batch_enabled))
 	
 	# Now restore original batch processing setting
 	batch_processing_enabled = original_batch_enabled
@@ -142,7 +142,7 @@ func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
 	if not Engine.is_editor_hint():
 		call_deferred("_register_with_syncer")
 	
-	debug_log("Complete reset finished - batch processing restored to: " + str(batch_processing_enabled))
+	debug("Complete reset finished - batch processing restored to: " + str(batch_processing_enabled))
 
 # Special reset function that forces batch processing OFF
 func _reset_with_batch_disabled():
@@ -165,7 +165,7 @@ func _reset_with_batch_disabled():
 	_setup_listeners(self)
 	batch_processor.setup()
 	
-	debug_log("Reset complete - batch processing FORCED OFF for property change")
+	debug("Reset complete - batch processing FORCED OFF for property change")
 	is_loading = false
 
 # Add this getter (using private variable)
@@ -175,12 +175,10 @@ func get_size_thresholds() -> Array[float]:
 		thresholds.append(chunk_size * _threshold_ratio)
 	return thresholds
 	
-func debug_log(message: String, value = null):
+func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 	if debug_enabled:
-		if value != null:
-			print(message, value)
-		else:
-			print(message)
+		print(multiplayer.get_unique_id(),": ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
+
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -234,7 +232,7 @@ func _create_editor_camera_position():
 	
 	_editor_camera = _get_editor_camera()
 	if not _editor_camera:
-		debug_log("Could not find editor camera")
+		debug("Could not find editor camera")
 		return
 	
 	_editor_camera_position = OWDBPosition.new()
@@ -246,14 +244,14 @@ func _create_editor_camera_position():
 	# Position at origin relative to camera (since it's a child, it will follow automatically)
 	_editor_camera_position.position = Vector3.ZERO
 	
-	debug_log("Created editor camera OWDBPosition node under editor camera")
+	debug("Created editor camera OWDBPosition node under editor camera")
 
 func _remove_editor_camera_position():
 	if _editor_camera_position and is_instance_valid(_editor_camera_position):
 		_editor_camera_position.queue_free()
 		_editor_camera_position = null
 		_editor_camera = null
-		debug_log("Removed editor camera OWDBPosition node")
+		debug("Removed editor camera OWDBPosition node")
 
 func _register_with_syncer():
 	# Only register in runtime, not in editor
@@ -262,7 +260,7 @@ func _register_with_syncer():
 		
 	if Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
 		Syncer.register_owdb(self)
-		debug_log("OWDB registered with Syncer")
+		debug("OWDB registered with Syncer")
 	
 func _exit_tree():
 	# Clean up editor camera position
@@ -271,7 +269,7 @@ func _exit_tree():
 	# Unregister from Syncer when OWDB is destroyed (runtime only)
 	if not Engine.is_editor_hint() and Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
 		Syncer.unregister_owdb()
-		debug_log("OWDB unregistered from Syncer")
+		debug("OWDB unregistered from Syncer")
 		
 func _setup_multiplayer_signals():
 	if not multiplayer:
@@ -285,16 +283,16 @@ func _setup_multiplayer_signals():
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 func _on_connected_to_server():
-	debug_log("OWDB: Connected to server, switching to PEER mode")
+	debug("OWDB: Connected to server, switching to PEER mode")
 	_multiplayer_connected = true
 	_update_network_mode()
 	_handle_mode_transition_to_peer()
 
 func _on_connection_failed():
-	debug_log("OWDB: Connection failed, staying in current mode")
+	debug("OWDB: Connection failed, staying in current mode")
 
 func _on_server_disconnected():
-	debug_log("OWDB: Disconnected from server, switching to HOST mode")
+	debug("OWDB: Disconnected from server, switching to HOST mode")
 	_multiplayer_connected = false
 	_update_network_mode()
 	_handle_mode_transition_to_host()
@@ -303,7 +301,7 @@ func _update_network_mode():
 	var new_mode = _determine_network_mode()
 	
 	if new_mode != current_network_mode:
-		debug_log("OWDB: Network mode changing from ", str(current_network_mode) + " to " + str(new_mode))
+		debug("OWDB: Network mode changing from ", str(current_network_mode) + " to " + str(new_mode))
 		current_network_mode = new_mode
 		
 		# Notify chunk manager of mode change
@@ -334,7 +332,7 @@ func _handle_mode_transition_to_peer():
 	chunk_manager.clear_autonomous_chunk_management()
 	
 	# Keep position tracking but disable autonomous loading
-	debug_log("OWDB: Transitioned to PEER mode - chunk loading now controlled by host")
+	debug("OWDB: Transitioned to PEER mode - chunk loading now controlled by host")
 	is_loading = false
 
 func _handle_mode_transition_to_host():
@@ -347,7 +345,7 @@ func _handle_mode_transition_to_host():
 	# Force update all registered positions to reload appropriate chunks
 	chunk_manager.force_refresh_all_positions()
 	
-	debug_log("OWDB: Transitioned to HOST mode - resuming autonomous chunk management")
+	debug("OWDB: Transitioned to HOST mode - resuming autonomous chunk management")
 	is_loading = false
 
 func get_network_mode() -> NetworkMode:
@@ -460,7 +458,7 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	loaded_nodes_by_uid.erase(uid)
 	batch_processor.remove_from_queues(uid)
 	
-	debug_log("NODE REMOVED FROM DATABASE: " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
+	debug("NODE REMOVED FROM DATABASE: " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
 	
 	var child_uids = []
 	for child_uid in node_monitor.stored_nodes:
@@ -485,7 +483,7 @@ func delete_custom_database(database_name: String) -> bool:
 func _cleanup_unload_tracking(uid: String):
 	nodes_being_unloaded.erase(uid)
 
-func debug():
+func debugAll():
 	print(multiplayer.get_unique_id(), ": === OWDB DEBUG INFO ===")
 	print(multiplayer.get_unique_id(), ": Network Mode: ", current_network_mode)
 	print(multiplayer.get_unique_id(), ": Nodes currently loaded: ", get_currently_loaded_nodes())
@@ -520,7 +518,7 @@ func _unload_node_not_in_chunk(node: Node):
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
 	
-	debug_log("NODE REMOVED (unloaded chunk): " + node.name + " - " + str(get_total_database_nodes()) + " total database nodes")
+	debug("NODE REMOVED (unloaded chunk): " + node.name + " - " + str(get_total_database_nodes()) + " total database nodes")
 	
 	node.free()
 	is_loading = was_loading
@@ -534,7 +532,7 @@ func _check_node_removal(node):
 		return
 	
 	if nodes_being_unloaded.has(uid):
-		debug_log("NODE EXITED (system unload): ", uid)
+		debug("NODE EXITED (system unload): ", uid)
 		return
 	
 	if node_monitor.stored_nodes.has(uid):
@@ -545,10 +543,10 @@ func _deferred_check_node_removal(node, uid: String):
 		return
 	
 	if node and node.is_inside_tree():
-		debug_log("NODE MOVED (still in tree): ", uid)
+		debug("NODE MOVED (still in tree): ", uid)
 		return
 	
 	if node_monitor.stored_nodes.has(uid) and not nodes_being_unloaded.has(uid):
 		_remove_node_and_children_from_database(uid, node)
 		
-		debug_log("NODE AUTO-REMOVED (user freed): " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
+		debug("NODE AUTO-REMOVED (user freed): " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")

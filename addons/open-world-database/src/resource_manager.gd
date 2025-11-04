@@ -15,7 +15,7 @@ class ResourceInfo:
 	var content_hash: String
 	var file_path: String  # For file-based resources
 	var properties: Dictionary  # For built-in resources
-	var reference_count: int = 0
+	var reference_count: int = 0  # Keep for compatibility but don't use for cleanup
 	
 	func _init(resource_id: String, type: String, hash: String):
 		id = resource_id
@@ -69,7 +69,7 @@ func _register_file_resource(resource: Resource) -> String:
 		info.original_id = _extract_original_id(resource)
 		info.file_path = file_path
 		resource_registry[resource_id] = info
-		owdb.debug_log("Registered file resource: ", resource_id)
+		owdb.debug("Registered file resource: ", resource_id)
 	
 	resource_registry[resource_id].reference_count += 1
 	return resource_id
@@ -81,7 +81,7 @@ func _register_builtin_resource(resource: Resource) -> String:
 	if content_hash_to_id.has(content_hash):
 		var existing_id = content_hash_to_id[content_hash]
 		resource_registry[existing_id].reference_count += 1
-		owdb.debug_log("Reusing existing builtin resource: ", existing_id)
+		owdb.debug("Reusing existing builtin resource: ", existing_id)
 		return existing_id
 	
 	# Create new resource entry
@@ -101,7 +101,7 @@ func _register_builtin_resource(resource: Resource) -> String:
 	resource_registry[resource_id] = info
 	content_hash_to_id[content_hash] = resource_id
 	
-	owdb.debug_log("Registered new builtin resource: ", resource_id + " (" + resource_type + ")")
+	owdb.debug("Registered new builtin resource: ", resource_id + " (" + resource_type + ")")
 	return resource_id
 
 func _extract_original_id(resource: Resource) -> String:
@@ -129,7 +129,7 @@ func _extract_modified_properties(resource: Resource) -> Dictionary:
 	var baseline = _get_baseline_resource(resource.get_class())
 	
 	if not baseline:
-		owdb.debug_log("Warning: No baseline available for resource type: ", resource.get_class())
+		owdb.debug("Warning: No baseline available for resource type: ", resource.get_class())
 		return properties
 	
 	for prop in resource.get_property_list():
@@ -140,7 +140,6 @@ func _extract_modified_properties(resource: Resource) -> Dictionary:
 			if not _values_equal(current_value, baseline_value):
 				properties[prop.name] = _serialize_property_value(current_value)
 	
-	#baseline.free()
 	return properties
 
 func _get_baseline_resource(resource_type: String) -> Resource:
@@ -170,7 +169,7 @@ func _get_baseline_resource(resource_type: String) -> Resource:
 		_: 
 			var instance = ClassDB.instantiate(resource_type) as Resource
 			if not instance:
-				owdb.debug_log("Failed to create baseline for resource type: ", resource_type)
+				owdb.debug("Failed to create baseline for resource type: ", resource_type)
 			return instance
 
 func _serialize_property_value(value) -> Variant:
@@ -213,7 +212,7 @@ func _values_equal(a, b) -> bool:
 # Resource restoration
 func restore_resource(resource_id: String) -> Resource:
 	if not resource_registry.has(resource_id):
-		owdb.debug_log("Resource not found in registry: ", resource_id)
+		owdb.debug("Resource not found in registry: ", resource_id)
 		return null
 	
 	var info = resource_registry[resource_id]
@@ -225,7 +224,7 @@ func restore_resource(resource_id: String) -> Resource:
 	# Handle built-in resources
 	var resource = _get_baseline_resource(info.resource_type)
 	if not resource:
-		owdb.debug_log("Failed to create baseline resource: ", info.resource_type)
+		owdb.debug("Failed to create baseline resource: ", info.resource_type)
 		return null
 	
 	# Apply stored properties
@@ -234,7 +233,7 @@ func restore_resource(resource_id: String) -> Resource:
 		if resource.has_method("set") and prop_name in resource:
 			resource.set(prop_name, value)
 	
-	owdb.debug_log("Restored builtin resource: ", resource_id)
+	owdb.debug("Restored builtin resource: ", resource_id)
 	return resource
 
 func _deserialize_property_value(value) -> Variant:
@@ -255,8 +254,13 @@ func _deserialize_property_value(value) -> Variant:
 	else:
 		return value
 
-# Cleanup unused resources
+# Simplified cleanup - only runs in editor mode
 func cleanup_unused_resources():
+	# Only cleanup in editor mode - runtime should preserve database state
+	if not Engine.is_editor_hint():
+		owdb.debug("Skipping resource cleanup - preserving database state in runtime")
+		return
+		
 	var unused_ids = []
 	
 	for resource_id in resource_registry:
@@ -270,7 +274,7 @@ func cleanup_unused_resources():
 		resource_registry.erase(resource_id)
 	
 	if unused_ids.size() > 0:
-		owdb.debug_log("Cleaned up unused resources: ", unused_ids.size())
+		owdb.debug("Cleaned up unused resources: ", unused_ids.size())
 
 func decrement_reference(resource_id: String):
 	if resource_registry.has(resource_id):

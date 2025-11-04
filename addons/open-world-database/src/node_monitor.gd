@@ -76,14 +76,14 @@ func _get_modified_properties(node: Node) -> Dictionary:
 			# Use resource manager for resource properties
 			var serialized_value = _serialize_property_value(current_value)
 			modified_properties[prop_name] = serialized_value
-			owdb.debug_log("Serialized property '" + prop_name + "' as: ", serialized_value)
+			owdb.debug("Serialized property '" + prop_name + "' as: ", serialized_value)
 	
 	return modified_properties
 
 func _serialize_property_value(value) -> Variant:
 	if value is Resource:
 		var resource_id = resource_manager.register_resource(value)
-		owdb.debug_log("Registered resource with ID: ", resource_id)
+		owdb.debug("Registered resource with ID: ", resource_id)
 		return resource_id
 	elif value is Array:
 		var serialized_array = []
@@ -100,20 +100,32 @@ func _serialize_property_value(value) -> Variant:
 
 # Apply properties during node restoration
 func apply_stored_properties(node: Node, properties: Dictionary):
+	owdb.debug("=== APPLYING PROPERTIES ===")
+	owdb.debug("Target node: ", node.name, " (", node.get_class(), ")")
+	owdb.debug("Properties to apply: ", properties)
+	owdb.debug("===============================")
+	
 	for prop_name in properties:
 		if prop_name not in ["position", "rotation", "scale", "size"]:
 			if node.has_method("set") and prop_name in node:
 				var stored_value = properties[prop_name]
 				var current_value = node.get(prop_name)
+				
+				owdb.debug("Processing property '", prop_name, "' with stored value: ", stored_value, " (type: ", typeof(stored_value), ")")
+				
 				var converted_value = _deserialize_property_value(stored_value, current_value)
+				
+				owdb.debug("Converted value: ", converted_value, " (type: ", typeof(converted_value), ")")
+				
 				node.set(prop_name, converted_value)
-				owdb.debug_log("Applied property '" + prop_name + "' with value: ", converted_value)
+				owdb.debug("Applied property '", prop_name, "' to node: ", node.name)
+
 
 func _deserialize_property_value(stored_value, current_value) -> Variant:
 	# Handle resource references
 	if stored_value is String and resource_manager.resource_registry.has(stored_value):
 		var restored_resource = resource_manager.restore_resource(stored_value)
-		owdb.debug_log("Restored resource: ", stored_value)
+		owdb.debug("Restored resource: ", stored_value)
 		return restored_resource
 	elif stored_value is Array:
 		var deserialized_array = []

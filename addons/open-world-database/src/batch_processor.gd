@@ -93,7 +93,7 @@ func _process_batch():
 	
 	if operations_performed > 0:
 		var time_taken = Time.get_ticks_msec() - start_time
-		_debug_log("Batch processed " + str(operations_performed) + " operations in " + str(time_taken) + "ms. Remaining: " + str(operation_order.size()))
+		_debug("Batch processed " + str(operations_performed) + " operations in " + str(time_taken) + "ms. Remaining: " + str(operation_order.size()))
 	
 	is_processing_batch = false
 
@@ -137,13 +137,13 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	if node_source.begins_with("res://"):
 		var scene = load(node_source)
 		if not scene:
-			_debug_log("Failed to load scene: " + node_source)
+			_debug("Failed to load scene: " + node_source)
 			return false
 		new_node = scene.instantiate()
 	else:
 		new_node = ClassDB.instantiate(node_source)
 		if not new_node:
-			_debug_log("Failed to create node of type: " + node_source)
+			_debug("Failed to create node of type: " + node_source)
 			return false
 	
 	new_node.name = node_name
@@ -171,7 +171,7 @@ func _immediate_load_node(uid: String):
 	var new_node = _create_node_from_source(node_info.scene)
 	
 	if not new_node:
-		_debug_log("Failed to create node for UID: " + uid)
+		_debug("Failed to create node for UID: " + uid)
 		return
 	
 	new_node.set_meta("_owd_uid", uid)
@@ -197,7 +197,7 @@ func _immediate_load_node(uid: String):
 	owdb.loaded_nodes_by_uid[uid] = new_node
 	owdb._setup_listeners(new_node)
 	
-	_debug_log("NODE LOADED: " + uid + " at " + str(node_info.position))
+	_debug("NODE LOADED: " + uid + " at " + str(node_info.position))
 
 # Consolidated node creation logic
 func _create_node_from_source(node_source: String) -> Node:
@@ -230,7 +230,7 @@ func _immediate_unload_node(uid: String):
 	node.free()
 	
 	owdb.call_deferred("_cleanup_unload_tracking", uid)
-	_debug_log("NODE UNLOADED: " + uid)
+	_debug("NODE UNLOADED: " + uid)
 
 func _remove_scene_node(node_name: String) -> bool:
 	var tree = _get_scene_tree()
@@ -341,9 +341,9 @@ func _notify_batch_complete():
 		if callback.is_valid():
 			callback.call()
 
-func _debug_log(message: String):
+func _debug(message: String):
 	if owdb:
-		owdb.debug_log(message)
+		owdb.debug(message)
 	else:
 		print(message)
 
@@ -382,7 +382,7 @@ func force_process_queues():
 	_notify_batch_complete()
 	
 	var time_taken = Time.get_ticks_msec() - start_time
-	_debug_log("Force processed " + str(actual_operations) + "/" + str(total_operations) + " operations in " + str(time_taken) + "ms")
+	_debug("Force processed " + str(actual_operations) + "/" + str(total_operations) + " operations in " + str(time_taken) + "ms")
 
 func cleanup_invalid_operations():
 	if not owdb:
@@ -410,7 +410,7 @@ func cleanup_invalid_operations():
 		operation_order.erase(operation_id)
 	
 	if invalid_ids.size() > 0:
-		_debug_log("Cleaned up " + str(invalid_ids.size()) + " invalid operations from queue")
+		_debug("Cleaned up " + str(invalid_ids.size()) + " invalid operations from queue")
 
 func update_batch_settings():
 	if batch_timer:
