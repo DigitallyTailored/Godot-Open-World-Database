@@ -245,7 +245,7 @@ func unregister_peer_position(peer_id: int):
 		owdb.debug("Unregistered OWDBPosition for peer: ", peer_id)
 
 func _process(_delta: float) -> void:
-	if Input.is_action_just_pressed("ui_accept"):
+	if owdb and Input.is_action_just_pressed("ui_accept"):
 		owdb.debug("sync_nodes: ", _sync_nodes.keys())
 		owdb.debug("peer_nodes_observing: ", _peer_nodes_observing)
 		owdb.debug("peer_positions: ", _peer_positions.keys())

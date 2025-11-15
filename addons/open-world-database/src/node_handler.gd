@@ -23,13 +23,13 @@ func handle_child_entered_tree(node: Node):
 			if owdb.loaded_nodes_by_uid.has(uid):
 				var existing_node = owdb.loaded_nodes_by_uid[uid]
 				if existing_node != node and is_instance_valid(existing_node):
-					# Duplicate UID found - generate new UID and treat as new node
+					# Duplicate UID found - generate new sequential name
 					var base_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
-					var new_uid = "%s%s%s" % [base_name, OpenWorldDatabase.UID_SEPARATOR, NodeUtils.generate_uid()]
+					var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 					node.set_meta("_owd_uid", new_uid)
 					node.name = new_uid
 					
-					owdb.debug("DUPLICATE UID DETECTED: " + uid + " -> ", new_uid)
+					owdb.debug("DUPLICATE UID DETECTED: " + uid + " -> " + new_uid)
 				# If existing_node is not valid anymore, we can continue with the current UID
 			
 	if not (node is Node3D or node.get_class() == "Node"):
@@ -46,7 +46,6 @@ func handle_child_entered_tree(node: Node):
 		return
 	
 	_handle_new_node(node)
-
 
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:
@@ -71,14 +70,18 @@ func _handle_node_move(node: Node):
 
 func _handle_new_node(node: Node):
 	if not node.has_meta("_owd_uid"):
-		var uid = "%s%s%s" % [node.name, OpenWorldDatabase.UID_SEPARATOR, NodeUtils.generate_uid()]
-		node.set_meta("_owd_uid", uid)
-		node.name = uid
+		# Use sequential naming based on stored nodes array
+		var base_name = node.name
+		var new_name = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
+		node.set_meta("_owd_uid", new_name)
+		node.name = new_name
 	
 	var uid = node.get_meta("_owd_uid")
 	var existing_node = owdb.get_node_by_uid(uid)
 	if existing_node != null and existing_node != node:
-		var new_uid = "%s%s%s" % [node.name.split(OpenWorldDatabase.UID_SEPARATOR)[0], OpenWorldDatabase.UID_SEPARATOR, NodeUtils.generate_uid()]
+		# If there's still a conflict, generate a new sequential name
+		var base_name = node.name.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in node.name else node.name
+		var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 		node.set_meta("_owd_uid", new_uid)
 		node.name = new_uid
 		uid = new_uid
