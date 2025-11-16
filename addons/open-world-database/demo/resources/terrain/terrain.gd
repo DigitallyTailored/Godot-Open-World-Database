@@ -230,7 +230,6 @@ func get_height_at_position(world_pos: Vector3) -> float:
 	if not noise:
 		return 0.0
 	
-	# FIXED: Proper coordinate conversion
 	# Convert world position back to grid coordinates for mask calculation
 	var grid_x_float = (world_pos.x * terrain_size.x / terrain_scale.x) + terrain_size.x * 0.5
 	var grid_z_float = (world_pos.z * terrain_size.y / terrain_scale.y) + terrain_size.y * 0.5

@@ -268,7 +268,6 @@ func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos
 			transform = transform.rotated(Vector3.RIGHT, tilt_x)
 			transform = transform.rotated(Vector3.FORWARD, tilt_z)
 		
-		# FIXED: Only apply XZ scaling, NO Y scaling - let shader handle height
 		var scale_xz = rng.randf_range(0.8, 1.2)  # Simplified XZ variation
 		transform = transform.scaled(Vector3(scale_xz, 1.0, scale_xz))  # Y scale = 1.0 (no change)
 		

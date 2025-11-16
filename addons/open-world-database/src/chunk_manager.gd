@@ -215,7 +215,6 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 	
 	owdb.debug(owdb.multiplayer.get_unique_id(), ": Notifying Syncer of chunk changes - loaded: ", loaded_entities.size(), " unloaded: ", unloaded_entities.size())
 	
-	# FIXED: Pass OWDB properties to Syncer instead of empty dictionary
 	for uid in loaded_entities:
 		if owdb.loaded_nodes_by_uid.has(uid):
 			var node = owdb.loaded_nodes_by_uid[uid]
@@ -230,7 +229,6 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 					owdb_properties = node_info.properties.duplicate()
 				
 				if not Syncer.is_node_registered(node):
-					# FIXED: Pass OWDB properties instead of empty dictionary
 					Syncer.register_node(node, node.scene_file_path, 1, owdb_properties, sync_component)
 				
 				_syncer_notified_entities[entity_name] = true

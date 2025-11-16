@@ -26,15 +26,16 @@ func _exit_tree():
 	_unregister_from_syncer()
 
 func get_peer_id() -> int:
-	# Look for OWDBSync node (check siblings first, then children as fallback)
-	var sync_node = _find_sync_node()
-	if sync_node:
-		return sync_node.peer_id
-	
+	if not Engine.is_editor_hint():
+		# Look for OWDBSync node (check siblings first, then children as fallback)
+		var sync_node = _find_sync_node()
+		if sync_node:
+			return sync_node.peer_id
+		
 	# Default to server/host if no OWDBSync node
 	return 1
 
-func _find_sync_node() -> OWDBSync:
+func _find_sync_node():
 	# Check if we have a cached reference that's still valid
 	if _sync_node and is_instance_valid(_sync_node):
 		return _sync_node

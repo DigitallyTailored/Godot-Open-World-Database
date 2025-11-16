@@ -190,7 +190,6 @@ func _update_single_peer_visibility(peer_id: int):
 			else:
 				owdb.debug("Hiding OWDB entity ", entity_name, " from peer ", peer_id)
 
-# FIXED: Use OWDB's chunk system only for OWDB-managed entities
 func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node) -> bool:
 	if not owdb or not entity_node:
 		return true
@@ -222,7 +221,6 @@ func _should_peer_see_entity_via_chunks(peer_id: int, entity_node: Node) -> bool
 	if entity_size_category == OpenWorldDatabase.Size.ALWAYS_LOADED:
 		return peer_required_chunks.has(OpenWorldDatabase.Size.ALWAYS_LOADED)
 	
-	# FIXED: Proper chunk size calculation with bounds checking
 	if entity_size_category >= owdb.chunk_sizes.size():
 		# If size category is out of bounds, treat as ALWAYS_LOADED
 		return peer_required_chunks.has(OpenWorldDatabase.Size.ALWAYS_LOADED)
@@ -312,7 +310,6 @@ func _check_if_pre_existing(node_name: String) -> bool:
 		return true
 	return not loaded_nodes.has(node_name)
 
-# FIXED: Only find nodes that are actually tracked by OWDB/Syncer
 func _find_node_by_name(node_name: String) -> Node:
 	# Only look in loaded_nodes - if it's not tracked, we shouldn't touch it
 	return loaded_nodes.get(node_name)
