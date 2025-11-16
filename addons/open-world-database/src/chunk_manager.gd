@@ -1,17 +1,22 @@
+# src/ChunkManager.gd
+# Manages spatial chunk loading/unloading based on position requirements and network mode
+# Coordinates with position tracking and batch processor for efficient world streaming
+# Handles network mode transitions and syncer integration for multiplayer visibility
+# Input: Position updates, network mode changes, chunk requirements
+# Output: Load/unload operations, syncer notifications, chunk state management
 @tool
 extends RefCounted
 class_name ChunkManager
 
 var owdb: OpenWorldDatabase
 var loaded_chunks: Dictionary = {}
-var chunk_requirements: Dictionary = {} # chunk_key -> Set of position_ids that need this chunk
-var position_registry: Dictionary = {} # position_id -> OWDBPosition node
-var position_required_chunks: Dictionary = {} # position_id -> Dictionary of required chunks
-var pending_chunk_operations: Dictionary = {} # chunk_key -> "load"/"unload"
+var chunk_requirements: Dictionary = {}
+var position_registry: Dictionary = {}
+var position_required_chunks: Dictionary = {}
+var pending_chunk_operations: Dictionary = {}
 var batch_callback_registered: bool = false
 
-# Network integration
-var _syncer_notified_entities: Dictionary = {} # entity_name -> true (track what we've told Syncer about)
+var _syncer_notified_entities: Dictionary = {}
 var _autonomous_chunk_management: bool = true
 var _current_network_mode: OpenWorldDatabase.NetworkMode = OpenWorldDatabase.NetworkMode.HOST
 
@@ -222,7 +227,6 @@ func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array)
 				var entity_name = node.name
 				var sync_component = node.find_child("Sync") if node.has_node("Sync") else null
 				
-				# Get OWDB properties for this entity
 				var owdb_properties = {}
 				if owdb.node_monitor.stored_nodes.has(uid):
 					var node_info = owdb.node_monitor.stored_nodes[uid]

@@ -1,21 +1,26 @@
+# src/ResourceManager.gd
+# Manages resource serialization, registration, and restoration for the open world database
+# Handles both file-based (.tres/.res) and built-in resources with content hashing
+# Tracks resource references and handles cleanup of unused resources
+# Input: Resource instances from node properties
+# Output: Resource IDs for serialization, restored Resource objects
 @tool
 extends RefCounted
 class_name ResourceManager
 
 var owdb: OpenWorldDatabase
-var resource_registry: Dictionary = {} # resource_id -> ResourceInfo
-var content_hash_to_id: Dictionary = {} # content_hash -> resource_id
+var resource_registry: Dictionary = {}
+var content_hash_to_id: Dictionary = {}
 var id_counter: int = 1
 
-# Resource info structure
 class ResourceInfo:
 	var id: String
-	var original_id: String  # Original Godot ID if extractable
+	var original_id: String
 	var resource_type: String
 	var content_hash: String
-	var file_path: String  # For file-based resources
-	var properties: Dictionary  # For built-in resources
-	var reference_count: int = 0  # Keep for compatibility but don't use for cleanup
+	var file_path: String
+	var properties: Dictionary
+	var reference_count: int = 0
 	
 	func _init(resource_id: String, type: String, hash: String):
 		id = resource_id
@@ -30,38 +35,30 @@ func reset():
 	content_hash_to_id.clear()
 	id_counter = 1
 
-# Main resource registration method
 func register_resource(resource: Resource) -> String:
 	if not resource:
 		return ""
 	
-	# Check if it's a TRUE file-based resource (not a local scene resource)
 	if _is_standalone_file_resource(resource):
 		return _register_file_resource(resource)
 	
-	# Handle built-in procedural resources (including local scene resources)
 	return _register_builtin_resource(resource)
 
 func _is_standalone_file_resource(resource: Resource) -> bool:
 	var resource_path = resource.resource_path
 	
-	# Empty path = definitely not a file resource
 	if resource_path == "":
 		return false
 	
-	# If path contains "::" it's a local resource within a scene/resource file
-	# These should be treated as built-in resources
 	if "::" in resource_path:
 		return false
 	
-	# Must be a standalone .tres or .res file
 	return resource_path.ends_with(".tres") or resource_path.ends_with(".res")
 
 func _register_file_resource(resource: Resource) -> String:
 	var file_path = resource.resource_path
 	var resource_type = resource.get_class()
 	
-	# Use file path as stable ID for file-based resources
 	var resource_id = "file:" + file_path
 	
 	if not resource_registry.has(resource_id):
@@ -77,19 +74,16 @@ func _register_file_resource(resource: Resource) -> String:
 func _register_builtin_resource(resource: Resource) -> String:
 	var content_hash = _calculate_content_hash(resource)
 	
-	# Check for existing resource with same content
 	if content_hash_to_id.has(content_hash):
 		var existing_id = content_hash_to_id[content_hash]
 		resource_registry[existing_id].reference_count += 1
 		owdb.debug("Reusing existing builtin resource: ", existing_id)
 		return existing_id
 	
-	# Create new resource entry
 	var original_id = _extract_original_id(resource)
 	var resource_type = resource.get_class()
 	var resource_id = original_id if original_id != "" else _generate_resource_id(resource_type)
 	
-	# Ensure the resource_id format includes the class name for clarity
 	if original_id != "":
 		resource_id = "<%s#%s>" % [resource_type, original_id]
 	
@@ -143,7 +137,6 @@ func _extract_modified_properties(resource: Resource) -> Dictionary:
 	return properties
 
 func _get_baseline_resource(resource_type: String) -> Resource:
-	# Create fresh instance for comparison
 	match resource_type:
 		"SphereMesh": return SphereMesh.new()
 		"BoxMesh": return BoxMesh.new()
@@ -166,7 +159,7 @@ func _get_baseline_resource(resource_type: String) -> Resource:
 		"SphereShape3D": return SphereShape3D.new()
 		"CylinderShape3D": return CylinderShape3D.new()
 		"CapsuleShape3D": return CapsuleShape3D.new()
-		_: 
+		_:
 			var instance = ClassDB.instantiate(resource_type) as Resource
 			if not instance:
 				owdb.debug("Failed to create baseline for resource type: ", resource_type)
@@ -174,7 +167,7 @@ func _get_baseline_resource(resource_type: String) -> Resource:
 
 func _serialize_property_value(value) -> Variant:
 	if value is Resource:
-		return register_resource(value)  # Recursive resource registration
+		return register_resource(value)
 	elif value is Array:
 		var serialized_array = []
 		for item in value:
@@ -209,7 +202,6 @@ func _values_equal(a, b) -> bool:
 	
 	return false
 
-# Resource restoration
 func restore_resource(resource_id: String) -> Resource:
 	if not resource_registry.has(resource_id):
 		owdb.debug("Resource not found in registry: ", resource_id)
@@ -217,17 +209,14 @@ func restore_resource(resource_id: String) -> Resource:
 	
 	var info = resource_registry[resource_id]
 	
-	# Handle file-based resources
 	if info.file_path != "":
 		return load(info.file_path)
 	
-	# Handle built-in resources
 	var resource = _get_baseline_resource(info.resource_type)
 	if not resource:
 		owdb.debug("Failed to create baseline resource: ", info.resource_type)
 		return null
 	
-	# Apply stored properties
 	for prop_name in info.properties:
 		var value = _deserialize_property_value(info.properties[prop_name])
 		if resource.has_method("set") and prop_name in resource:
@@ -254,9 +243,7 @@ func _deserialize_property_value(value) -> Variant:
 	else:
 		return value
 
-# Simplified cleanup - only runs in editor mode
 func cleanup_unused_resources():
-	# Only cleanup in editor mode - runtime should preserve database state
 	if not Engine.is_editor_hint():
 		owdb.debug("Skipping resource cleanup - preserving database state in runtime")
 		return
@@ -280,7 +267,6 @@ func decrement_reference(resource_id: String):
 	if resource_registry.has(resource_id):
 		resource_registry[resource_id].reference_count -= 1
 
-# Serialization for database storage
 func serialize_resources() -> Dictionary:
 	var serialized = {}
 	for resource_id in resource_registry:
@@ -309,7 +295,6 @@ func deserialize_resources(data: Dictionary):
 		if info.content_hash != "":
 			content_hash_to_id[info.content_hash] = resource_id
 	
-	# Update ID counter to avoid conflicts
 	var max_id = 0
 	for resource_id in resource_registry:
 		if resource_id.contains("#"):

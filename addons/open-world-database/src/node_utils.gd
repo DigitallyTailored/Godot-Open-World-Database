@@ -1,3 +1,9 @@
+# src/NodeUtils.gd
+# Static utility functions for node operations, naming, and property handling
+# Provides chunk calculations, AABB computations, and property type conversions
+# Handles unique name generation and node size calculations with caching
+# Input: Nodes, positions, property values
+# Output: Chunk positions, node sizes, converted property values, unique names
 @tool
 extends RefCounted
 class_name NodeUtils
@@ -7,62 +13,46 @@ static func remove_children(node: Node):
 	for child in children:
 		child.free()
 
-# Generate sequential node names based on stored nodes array
 static func generate_next_available_name(base_name: String, stored_nodes: Dictionary) -> String:
-	# Extract the actual base name (remove any trailing numbers)
 	var actual_base = _extract_base_name(base_name)
 	
-	# If the clean base name doesn't exist, use it directly
 	if not _name_exists_in_stored_nodes(actual_base, stored_nodes):
 		return actual_base
 	
-	# Find the highest existing number for this base name
 	var highest_number = _find_highest_number_for_base(actual_base, stored_nodes)
 	
-	# Return the next available number
 	return actual_base + str(highest_number + 1)
 
-# Extract base name by removing trailing numbers
 static func _extract_base_name(name: String) -> String:
-	# Work backwards from the end to find where numbers start
 	var i = name.length() - 1
 	while i >= 0 and name[i].is_valid_int():
 		i -= 1
 	
-	# If the entire string is numbers, return it as-is
 	if i < 0:
 		return name
 	
-	# Return everything up to where the numbers start
 	return name.substr(0, i + 1)
 
-# Find the highest number suffix for a given base name
 static func _find_highest_number_for_base(base_name: String, stored_nodes: Dictionary) -> int:
 	var highest = 0
 	
 	for uid in stored_nodes:
 		var node_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
 		
-		# Check if this node name starts with our base name
 		if node_name.begins_with(base_name):
 			var suffix = node_name.substr(base_name.length())
 			
-			# If there's no suffix, this is the base name (treat as number 1)
 			if suffix == "":
 				highest = max(highest, 1)
-			# If suffix is all digits, it's a numbered variant
 			elif suffix.is_valid_int():
 				highest = max(highest, suffix.to_int())
 	
 	return highest
 
-# Helper function to check if a name exists in stored nodes
 static func _name_exists_in_stored_nodes(name: String, stored_nodes: Dictionary) -> bool:
-	# Check by UID (which is the node name in your system)
 	if stored_nodes.has(name):
 		return true
 	
-	# Also check by extracting base names from UIDs (in case there are separators)
 	for uid in stored_nodes:
 		var node_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
 		if node_name == name:
@@ -120,7 +110,7 @@ static func calculate_node_size(node: Node, force_recalculate: bool = false) -> 
 	return max_size
 
 static func get_storable_properties(node: Node) -> Array:
-	return node.get_property_list().filter(func(prop): 
+	return node.get_property_list().filter(func(prop):
 		return not prop.name.begins_with("_") and (prop.usage & PROPERTY_USAGE_STORAGE) and not prop.name in OpenWorldDatabase.SKIP_PROPERTIES
 	)
 
@@ -156,7 +146,7 @@ static func convert_property_value(stored_value: Variant, current_value: Variant
 	elif current_value is Vector2:
 		return parse_vector2(str_val)
 	elif current_value is Vector3:
-		return parse_vector3(str_val)  
+		return parse_vector3(str_val)
 	elif current_value is Vector4:
 		return parse_vector4(str_val)
 	

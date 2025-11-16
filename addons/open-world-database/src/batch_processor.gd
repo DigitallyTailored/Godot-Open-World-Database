@@ -1,4 +1,9 @@
-# src/batch-processor.gd
+# src/BatchProcessor.gd
+# Processes world operations in time-limited batches to maintain frame rate stability
+# Handles node loading/unloading/instantiation with configurable timing and callbacks
+# Provides both immediate and batched operation modes with queue management
+# Input: Operation requests (load/unload/instantiate), timing configurations
+# Output: Processed world changes, batch completion callbacks, operation validation
 @tool
 extends RefCounted
 class_name BatchProcessor
@@ -6,19 +11,16 @@ class_name BatchProcessor
 var owdb: OpenWorldDatabase
 var parent_node: Node
 
-# Batch processing configuration
 var batch_time_limit_ms: float = 5.0
 var batch_interval_ms: float = 100.0
 var batch_processing_enabled: bool = true
 
-# Generic operation system
-var pending_operations: Dictionary = {} # operation_id -> {type: String, data: Dictionary, callback: Callable}
-var operation_order: Array = [] # operation_ids in processing order
+var pending_operations: Dictionary = {}
+var operation_order: Array = []
 var batch_timer: Timer
 var is_processing_batch: bool = false
 var batch_complete_callbacks: Array[Callable] = []
 
-# Operation types
 enum OperationType {
 	LOAD_NODE,
 	UNLOAD_NODE,
@@ -68,7 +70,6 @@ func _process_batch():
 		
 		var operation = pending_operations[operation_id]
 		
-		# Process based on operation type
 		match operation.type:
 			OperationType.LOAD_NODE:
 				if _process_load_node_operation(operation):
@@ -126,7 +127,6 @@ func _process_remove_node_operation(operation: Dictionary) -> bool:
 	var node_name = operation.data.get("node_name", "")
 	return _remove_scene_node(node_name)
 
-# CONSOLIDATED: Single node creation method handles all instantiation
 func _create_node(node_source: String) -> Node:
 	if node_source == "":
 		_debug("Cannot create node: empty source")
@@ -135,14 +135,12 @@ func _create_node(node_source: String) -> Node:
 	var new_node: Node
 	
 	if node_source.begins_with("res://"):
-		# Scene file path
 		var scene = load(node_source)
 		if not scene:
 			_debug("Failed to load scene: " + node_source)
 			return null
 		new_node = scene.instantiate()
 	else:
-		# Class name
 		new_node = ClassDB.instantiate(node_source)
 		if not new_node:
 			_debug("Failed to create node of type: " + node_source)
@@ -150,7 +148,6 @@ func _create_node(node_source: String) -> Node:
 	
 	return new_node
 
-# Updated to use consolidated creation method
 func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
 	var parent_node_target = _get_parent_node_for_instantiation(parent_path)
 	if not parent_node_target:
@@ -167,14 +164,12 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	
 	parent_node_target.add_child(new_node)
 	
-	# Register with Syncer if available and not in editor
 	if not Engine.is_editor_hint() and Syncer and (Syncer.has_method("is_placeholder") and not Syncer.is_placeholder()):
 		if not Syncer.is_node_registered(new_node):
 			Syncer.register_node(new_node, node_source, 1, {}, null)
 	
 	return true
 
-# Updated to use consolidated creation method
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
 		return
@@ -198,7 +193,6 @@ func _immediate_load_node(uid: String):
 		if parent:
 			parent_node_target = parent
 	
-	# Apply properties using resource manager
 	owdb.node_monitor.apply_stored_properties(new_node, node_info.properties)
 	
 	parent_node_target.add_child(new_node)
@@ -238,7 +232,6 @@ func _immediate_unload_node(uid: String):
 	_debug("NODE UNLOADED: " + uid)
 
 func _remove_scene_node(node_name: String) -> bool:
-	# Only remove nodes that we actually instantiated
 	if not owdb or not owdb.loaded_nodes_by_uid.has(node_name):
 		return false
 		
@@ -264,7 +257,6 @@ func _get_parent_node_for_instantiation(parent_path: String) -> Node:
 	
 	return parent_node_result
 
-# Validation methods
 func _is_load_operation_valid(uid: String) -> bool:
 	if not owdb or not owdb.node_monitor.stored_nodes.has(uid):
 		return false
@@ -291,7 +283,6 @@ func _is_unload_operation_valid(uid: String) -> bool:
 	
 	return not chunk_should_be_loaded and is_currently_loaded
 
-# Public interface methods
 func queue_operation(type: OperationType, data: Dictionary, callback: Callable = Callable()) -> String:
 	var operation_id = _generate_operation_id()
 	
@@ -392,7 +383,7 @@ func force_process_queues():
 
 func cleanup_invalid_operations():
 	if not owdb:
-		return  # Skip cleanup if no OWDB (scene operations don't need validation)
+		return
 		
 	var invalid_ids = []
 	
@@ -406,7 +397,7 @@ func cleanup_invalid_operations():
 			OperationType.UNLOAD_NODE:
 				is_valid = _is_unload_operation_valid(operation.data.get("uid", ""))
 			OperationType.INSTANTIATE_SCENE, OperationType.REMOVE_NODE:
-				is_valid = true # These are always valid when queued
+				is_valid = true
 		
 		if not is_valid:
 			invalid_ids.append(operation_id)

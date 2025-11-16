@@ -1,4 +1,9 @@
 # src/network/OWDBSync.gd
+# Individual node synchronization component that watches and syncs specific properties
+# Handles variable watching, throttled updates, and bidirectional sync communication
+# Manages transform properties (position, rotation, scale) with optimized getters/setters
+# Input: Property changes, network variable updates
+# Output: Sync data to Syncer, property applications to parent node
 extends Node
 class_name OWDBSync
 
@@ -14,18 +19,15 @@ var parent_path := ""
 var parent : Node3D
 var is_pre_existing := false
 
-# Watch system variables
 var watched_variables := []
 var synced_values := {}
 var previous_values := {}
 var interval := 100
 var watch_timer : Timer
 
-# Cached property accessors for performance
 var property_getters := {}
 var property_setters := {}
 
-# Throttled output tracking
 var throttled_last_send := {}
 
 func _ready():
@@ -36,7 +38,6 @@ func _ready():
 	parent_path = _get_parent_path()
 	is_pre_existing = _check_if_pre_existing()
 	
-	# Register with Syncer (Syncer handles the networking registration)
 	Syncer.register_node(parent, parent_scene, peer_id, synced_values, self)
 		
 	if !parent.has_method("_host_process"):
@@ -44,11 +45,9 @@ func _ready():
 	if !parent.has_method("_host_physics_process"):
 		set_physics_process(false)
 	
-	# Auto-setup watch system if variables are provided
 	if not autowatch_parent_variables.is_empty():
 		set_interval(autowatch_interval_ms)
 		
-		# Then setup watching (this will also populate values with any received data)
 		watch(autowatch_parent_variables)
 
 func _build_property_cache():
@@ -280,7 +279,6 @@ func output(variables_in) -> void:
 			synced_values[key] = variables_in[key]
 	
 	if not sync_data.is_empty():
-		# Delegate to Syncer instead of calling sync_variables directly
 		Syncer.sync_variables(parent_name, sync_data, false)
 
 func output_timed(variables_in, custom_interval: int = -1) -> void:
@@ -308,6 +306,5 @@ func emit_signal_recieved_data(variables_in: Dictionary) -> void:
 	input.emit(variables_in)
 
 func _exit_tree() -> void:
-	# Syncer will handle unregistration via tree_exiting signal
 	if watch_timer:
 		watch_timer.queue_free()

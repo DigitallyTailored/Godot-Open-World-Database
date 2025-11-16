@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://c7vmppndoqev5"]
+[gd_scene load_steps=10 format=3 uid="uid://c7vmppndoqev5"]
 
 [ext_resource type="Script" uid="uid://ckgq8twwf3wk1" path="res://addons/open-world-database/demo/network/main/main.gd" id="1_itjsd"]
 [ext_resource type="Script" uid="uid://c51vw17uqaabu" path="res://addons/open-world-database/demo/network/main/fps.gd" id="2_bpdpu"]
@@ -27,16 +27,6 @@ albedo_color = Color(0.22526717, 0.514487, 0.43196374, 1)
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wi4fq"]
 points = PackedVector3Array(-500, -0.05, -500, -500, 0.05, -500, 500, -0.05, -500, -500, -0.05, 500, -500, 0.05, 500, 500, 0.05, -500, 500, -0.05, 500, 500, 0.05, 500)
-
-[sub_resource type="SphereMesh" id="SphereMesh_bpdpu"]
-
-[sub_resource type="TorusMesh" id="TorusMesh_l13gw"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_my76s"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_uvjsd"]
-
-[sub_resource type="PrismMesh" id="PrismMesh_dinxd"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_itjsd")
@@ -129,45 +119,6 @@ chunk_sizes = Array[float]([1.0, 2.0, 4.0])
 threshold_ratio = 0.75
 debug_enabled = true
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="OpenWorldDatabase"]
-transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
-mesh = SubResource("SphereMesh_bpdpu")
-metadata/_owd_uid = "MeshInstance3D"
-metadata/_owd_last_scale = Vector3(2, 2, 2)
-metadata/_owd_last_size = 1.9999996
-
-[node name="MeshInstance3D6" type="MeshInstance3D" parent="OpenWorldDatabase"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0432496, 0, 0)
-mesh = SubResource("TorusMesh_l13gw")
-skeleton = NodePath("../..")
-metadata/_owd_uid = "MeshInstance3D6"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.0
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="OpenWorldDatabase"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7310714, 0, 0)
-mesh = SubResource("BoxMesh_my76s")
-skeleton = NodePath("../..")
-metadata/_owd_uid = "MeshInstance3D2"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0000001
-
-[node name="MeshInstance3D3" type="MeshInstance3D" parent="OpenWorldDatabase"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7310714, 0, 0)
-mesh = SubResource("BoxMesh_uvjsd")
-skeleton = NodePath("../..")
-metadata/_owd_uid = "MeshInstance3D3"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0000001
-
-[node name="MeshInstance3D4" type="MeshInstance3D" parent="OpenWorldDatabase"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.203394, 0, 0)
-mesh = SubResource("PrismMesh_dinxd")
-skeleton = NodePath("../..")
-metadata/_owd_uid = "MeshInstance3D4"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
 
 [node name="SyncNodes" type="Node" parent="."]
 

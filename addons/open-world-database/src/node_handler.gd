@@ -1,3 +1,9 @@
+# src/NodeHandler.gd
+# Handles node lifecycle events and coordinates with chunk system for loading decisions
+# Manages node entering/exiting tree, moves, renames, and duplicate UID resolution
+# Ensures nodes are loaded/unloaded based on chunk requirements
+# Input: Tree change signals, node modifications
+# Output: Node database updates, chunk lookup maintenance, deferred unloading
 @tool
 extends RefCounted
 class_name NodeHandler
@@ -18,19 +24,16 @@ func handle_child_entered_tree(node: Node):
 		if owdb.is_loading:
 			return
 		else:
-			# Check for duplicate UIDs in loaded nodes - bypass if loading
 			var uid = node.get_meta("_owd_uid")
 			if owdb.loaded_nodes_by_uid.has(uid):
 				var existing_node = owdb.loaded_nodes_by_uid[uid]
 				if existing_node != node and is_instance_valid(existing_node):
-					# Duplicate UID found - generate new sequential name
 					var base_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
 					var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 					node.set_meta("_owd_uid", new_uid)
 					node.name = new_uid
 					
 					owdb.debug("DUPLICATE UID DETECTED: " + uid + " -> " + new_uid)
-				# If existing_node is not valid anymore, we can continue with the current UID
 			
 	if not (node is Node3D or node.get_class() == "Node"):
 		return
@@ -70,7 +73,6 @@ func _handle_node_move(node: Node):
 
 func _handle_new_node(node: Node):
 	if not node.has_meta("_owd_uid"):
-		# Use sequential naming based on stored nodes array
 		var base_name = node.name
 		var new_name = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 		node.set_meta("_owd_uid", new_name)
@@ -79,7 +81,6 @@ func _handle_new_node(node: Node):
 	var uid = node.get_meta("_owd_uid")
 	var existing_node = owdb.get_node_by_uid(uid)
 	if existing_node != null and existing_node != node:
-		# If there's still a conflict, generate a new sequential name
 		var base_name = node.name.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in node.name else node.name
 		var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 		node.set_meta("_owd_uid", new_uid)
@@ -123,18 +124,14 @@ func handle_node_rename(node: Node) -> bool:
 		owdb.node_monitor.stored_nodes[node.name] = node_info
 		owdb.node_monitor.stored_nodes.erase(old_uid)
 	
-	# Update cache
 	if owdb.loaded_nodes_by_uid.has(old_uid):
 		owdb.loaded_nodes_by_uid[node.name] = owdb.loaded_nodes_by_uid[old_uid]
 		owdb.loaded_nodes_by_uid.erase(old_uid)
 	
-	# Update chunk lookup
 	NodeUtils.update_chunk_lookup_uid(owdb.chunk_lookup, old_uid, node.name)
 	
-	# Update parent references
 	NodeUtils.update_parent_references(owdb.node_monitor.stored_nodes, old_uid, node.name)
 	
-	# Update queues
 	owdb.batch_processor.remove_from_queues(old_uid)
 	
 	return true

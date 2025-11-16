@@ -1,4 +1,9 @@
 # src/editor/EditorCameraFollower.gd
+# Manages editor camera position tracking by creating OWDBPosition nodes under editor camera
+# Enables chunk loading to follow editor viewport in the Godot editor
+# Handles creation/cleanup of temporary position tracking nodes
+# Input: Editor camera references, follow state changes
+# Output: OWDBPosition node management, editor camera position tracking
 @tool
 extends RefCounted
 class_name EditorCameraFollower
@@ -38,10 +43,8 @@ func _create_editor_camera_position():
 	_editor_camera_position = OWDBPosition.new()
 	_editor_camera_position.name = "EditorCameraPosition"
 	
-	# Add as child of the editor camera
 	_editor_camera.add_child(_editor_camera_position)
 	
-	# Position at origin relative to camera (since it's a child, it will follow automatically)
 	_editor_camera_position.position = Vector3.ZERO
 	
 	owdb.debug("Created editor camera OWDBPosition node under editor camera")

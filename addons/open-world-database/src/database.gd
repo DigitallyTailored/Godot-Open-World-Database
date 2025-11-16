@@ -1,3 +1,9 @@
+# src/Database.gd
+# Handles database file I/O operations for persistent world state storage
+# Manages serialization of node hierarchy with resources to .owdb files
+# Supports custom database naming and provides database management utilities
+# Input: Scene nodes, resource registry, custom database names
+# Output: .owdb database files, loaded node hierarchies, resource restoration
 @tool
 extends RefCounted
 class_name Database
@@ -34,7 +40,6 @@ func get_user_database_path(database_name: String) -> String:
 	
 	return "user://" + db_name
 
-# Consolidated save function with simplified resource management
 func save_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "":
@@ -43,7 +48,6 @@ func save_database(custom_name: String = ""):
 	
 	_save_database_to_path(db_path)
 
-# Consolidated load function with resource management
 func load_database(custom_name: String = ""):
 	var db_path = _get_database_path(custom_name)
 	if db_path == "" or not FileAccess.file_exists(db_path):
@@ -78,9 +82,7 @@ func delete_custom_database(database_name: String) -> bool:
 		return true
 	return false
 
-# Simplified save - no resource cleanup needed
 func _save_database_to_path(db_path: String):
-	# STEP 1: Update all currently loaded nodes and handle size/position changes
 	for uid in owdb.loaded_nodes_by_uid.keys():
 		if not owdb.node_monitor.stored_nodes.has(uid):
 			continue
@@ -109,11 +111,9 @@ func _save_database_to_path(db_path: String):
 	
 	var top_level_uids = _get_top_level_uids()
 	
-	# Write nodes first
 	for uid in top_level_uids:
 		_write_node_recursive(file, uid, 0)
 	
-	# Write resource registry at the end
 	_write_resource_registry(file)
 	
 	file.close()
@@ -126,10 +126,8 @@ func _write_resource_registry(file: FileAccess):
 		owdb.debug("No resources to save")
 		return
 	
-	# Write section header
 	file.store_line("RESOURCES")
 	
-	# Write each resource on its own line with clean format
 	for resource_id in resources:
 		var resource_data = resources[resource_id]
 		var resource_json = JSON.stringify(resource_data)
@@ -152,7 +150,6 @@ func _load_database_from_path(db_path: String):
 		print(owdb.multiplayer.get_unique_id(), ": Error: Could not open database: ", db_path)
 		return
 	
-	# Clear existing data
 	owdb.node_monitor.stored_nodes.clear()
 	owdb.chunk_lookup.clear()
 	owdb.node_monitor.resource_manager.reset()
@@ -167,12 +164,10 @@ func _load_database_from_path(db_path: String):
 		if line == "":
 			continue
 		
-		# Check for resources section
 		if line == "RESOURCES":
 			in_resources_section = true
 			continue
 		
-		# If we're in the resources section, parse resource entries
 		if in_resources_section:
 			if ":" in line:
 				var colon_pos = line.find(":")
@@ -182,7 +177,6 @@ func _load_database_from_path(db_path: String):
 				resources_loaded += 1
 			continue
 		
-		# Parse regular node lines (not in resources section)
 		var depth = 0
 		while depth < line.length() and line[depth] == "\t":
 			depth += 1
@@ -212,21 +206,19 @@ func _load_database_from_path(db_path: String):
 	
 	owdb.debug(load_msg)
 
-# Load individual resource - stays in database.gd
 func _load_single_resource(resource_id: String, resource_json: String):
 	var json = JSON.new()
 	if json.parse(resource_json) == OK:
 		var resource_data = json.data
 		
 		var info = owdb.node_monitor.resource_manager.ResourceInfo.new(
-			resource_id, 
-			resource_data.get("type", ""), 
+			resource_id,
+			resource_data.get("type", ""),
 			resource_data.get("content_hash", "")
 		)
 		info.original_id = resource_data.get("original_id", "")
 		info.file_path = resource_data.get("file_path", "")
 		info.properties = resource_data.get("properties", {})
-		# No reference counting needed - database resources persist
 		
 		owdb.node_monitor.resource_manager.resource_registry[resource_id] = info
 		
