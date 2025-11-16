@@ -1,3 +1,4 @@
+# src/batch-processor.gd
 @tool
 extends RefCounted
 class_name BatchProcessor
@@ -125,26 +126,39 @@ func _process_remove_node_operation(operation: Dictionary) -> bool:
 	var node_name = operation.data.get("node_name", "")
 	return _remove_scene_node(node_name)
 
-# Consolidated node instantiation (handles both scenes and node types)
+# CONSOLIDATED: Single node creation method handles all instantiation
+func _create_node(node_source: String) -> Node:
+	if node_source == "":
+		_debug("Cannot create node: empty source")
+		return null
+	
+	var new_node: Node
+	
+	if node_source.begins_with("res://"):
+		# Scene file path
+		var scene = load(node_source)
+		if not scene:
+			_debug("Failed to load scene: " + node_source)
+			return null
+		new_node = scene.instantiate()
+	else:
+		# Class name
+		new_node = ClassDB.instantiate(node_source)
+		if not new_node:
+			_debug("Failed to create node of type: " + node_source)
+			return null
+	
+	return new_node
+
+# Updated to use consolidated creation method
 func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
 	var parent_node_target = _get_parent_node_for_instantiation(parent_path)
 	if not parent_node_target:
 		return false
 	
-	var new_node: Node
-	
-	# Use the same logic as _immediate_load_node for consistency
-	if node_source.begins_with("res://"):
-		var scene = load(node_source)
-		if not scene:
-			_debug("Failed to load scene: " + node_source)
-			return false
-		new_node = scene.instantiate()
-	else:
-		new_node = ClassDB.instantiate(node_source)
-		if not new_node:
-			_debug("Failed to create node of type: " + node_source)
-			return false
+	var new_node = _create_node(node_source)
+	if not new_node:
+		return false
 	
 	new_node.name = node_name
 	
@@ -160,6 +174,7 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	
 	return true
 
+# Updated to use consolidated creation method
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
 		return
@@ -168,7 +183,7 @@ func _immediate_load_node(uid: String):
 		return
 		
 	var node_info = owdb.node_monitor.stored_nodes[uid]
-	var new_node = _create_node_from_source(node_info.scene)
+	var new_node = _create_node(node_info.scene)
 	
 	if not new_node:
 		_debug("Failed to create node for UID: " + uid)
@@ -198,16 +213,6 @@ func _immediate_load_node(uid: String):
 	owdb._setup_listeners(new_node)
 	
 	_debug("NODE LOADED: " + uid + " at " + str(node_info.position))
-
-# Consolidated node creation logic
-func _create_node_from_source(node_source: String) -> Node:
-	if node_source.begins_with("res://"):
-		var scene = load(node_source)
-		if not scene:
-			return null
-		return scene.instantiate()
-	else:
-		return ClassDB.instantiate(node_source)
 
 func _immediate_unload_node(uid: String):
 	if not owdb:
@@ -243,7 +248,6 @@ func _remove_scene_node(node_name: String) -> bool:
 		owdb.loaded_nodes_by_uid.erase(node_name)
 		return true
 	return false
-
 
 func _get_parent_node_for_instantiation(parent_path: String) -> Node:
 	var tree = _get_scene_tree()

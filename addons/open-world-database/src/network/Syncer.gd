@@ -1,3 +1,4 @@
+# src/network/Syncer.gd (Updated to use BatchProcessor's consolidated creation method)
 # src/network/Syncer.gd
 @tool
 extends Node
@@ -506,6 +507,7 @@ func _check_value_for_missing_resources(value, missing_list: Array):
 		for key in value:
 			_check_value_for_missing_resources(value[key], missing_list)
 
+# UPDATED: Use BatchProcessor's consolidated creation method
 func _create_pending_node(node_name: String):
 	if not _pending_nodes.has(node_name):
 		return
@@ -513,7 +515,7 @@ func _create_pending_node(node_name: String):
 	var node_data = _pending_nodes[node_name]
 	_pending_nodes.erase(node_name)
 	
-	# Create the node using BatchProcessor directly
+	# Use BatchProcessor's consolidated instantiate_scene method
 	if owdb and owdb.batch_processor:
 		owdb.batch_processor.instantiate_scene(
 			node_data.scene,

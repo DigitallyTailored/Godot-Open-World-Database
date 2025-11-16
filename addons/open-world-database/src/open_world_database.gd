@@ -177,7 +177,10 @@ func get_size_thresholds() -> Array[float]:
 	
 func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 	if debug_enabled:
-		print(multiplayer.get_unique_id(),": ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
+		if multiplayer:
+			print(multiplayer.get_unique_id(),": ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
+		else:
+			print("0: ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
 
 
 func _ready() -> void:
