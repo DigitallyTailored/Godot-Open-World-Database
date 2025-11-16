@@ -233,15 +233,17 @@ func _immediate_unload_node(uid: String):
 	_debug("NODE UNLOADED: " + uid)
 
 func _remove_scene_node(node_name: String) -> bool:
-	var tree = _get_scene_tree()
-	if not tree or not tree.current_scene:
+	# Only remove nodes that we actually instantiated
+	if not owdb or not owdb.loaded_nodes_by_uid.has(node_name):
 		return false
 		
-	var node = tree.current_scene.find_child(node_name, true, false)
+	var node = owdb.loaded_nodes_by_uid.get(node_name)
 	if node and is_instance_valid(node):
 		node.queue_free()
+		owdb.loaded_nodes_by_uid.erase(node_name)
 		return true
 	return false
+
 
 func _get_parent_node_for_instantiation(parent_path: String) -> Node:
 	var tree = _get_scene_tree()

@@ -343,10 +343,16 @@ metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.411251
 
 [node name="Rock11-1754842169895_5553" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_bfajm")]
-transform = Transform3D(0.17510107, 0.33693117, -0.9251038, -0.062661104, 0.9415293, 0.33105317, 0.98255444, 2.6077032e-07, 0.18597525, -28.496544, 6.798183, -44.129337)
+transform = Transform3D(0.17510107, 0.33693117, -0.9251038, -0.06266111, 0.9415293, 0.33105317, 0.98255444, 2.682209e-07, 0.18597525, -28.496544, 6.798183, -44.129337)
 metadata/_owd_uid = "Rock11-1754842169895_5553"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.9744377
+
+[node name="Rock16-1754842169896_2282" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_bfajm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.542057, 12.574853, -36.46071)
+metadata/_owd_uid = "Rock16-1754842169896_2282"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.411251
 
 [node name="Enemy17-1754841838727_7874" type="CharacterBody3D" parent="OpenWorldDatabase" instance=ExtResource("5_uuswd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.240791, 5.644027, -68.79158)
@@ -363,12 +369,6 @@ script = ExtResource("6_xpfyc")
 metadata/_owd_uid = "Enemy-1754841434762_2107"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.628665
-
-[node name="Rock16-1754842169896_2282" type="Node3D" parent="OpenWorldDatabase" instance=ExtResource("6_bfajm")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.542057, 12.574853, -36.46071)
-metadata/_owd_uid = "Rock16-1754842169896_2282"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.411251
 
 [node name="Player" parent="." instance=ExtResource("10_3yay0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.4898305, 4.67269, -90.045845)

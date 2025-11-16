@@ -311,16 +311,10 @@ func _check_if_pre_existing(node_name: String) -> bool:
 		return true
 	return not loaded_nodes.has(node_name)
 
-# Helper method to find nodes in the scene tree
+# FIXED: Only find nodes that are actually tracked by OWDB/Syncer
 func _find_node_by_name(node_name: String) -> Node:
-	if loaded_nodes.has(node_name):
-		return loaded_nodes[node_name]
-	
-	var tree = get_tree()
-	if tree.current_scene and tree.current_scene.has_node(node_name):
-		return tree.current_scene.get_node(node_name)
-	
-	return get_node("/root").find_child(node_name, true, false)
+	# Only look in loaded_nodes - if it's not tracked, we shouldn't touch it
+	return loaded_nodes.get(node_name)
 
 func _remove_node_locally(node_name: String):
 	var node = _find_node_by_name(node_name)
