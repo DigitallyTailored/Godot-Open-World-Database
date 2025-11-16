@@ -49,14 +49,14 @@ transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545
 shadow_enabled = true
 directional_shadow_max_distance = 1.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="floor" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17365074, -2, 0.005613327)
 mesh = SubResource("BoxMesh_itjsd")
 surface_material_override/0 = SubResource("StandardMaterial3D_shys2")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D"]
+[node name="StaticBody3D" type="StaticBody3D" parent="floor"]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="floor/StaticBody3D"]
 shape = SubResource("ConvexPolygonShape3D_wi4fq")
 
 [node name="FPS" type="Label" parent="."]
@@ -133,7 +133,7 @@ metadata/_custom_type_script = "uid://b46e3mat8dx5"
 [node name="MeshInstance3D" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 mesh = SubResource("SphereMesh_bpdpu")
-metadata/_owd_uid = &"MeshInstance3D"
+metadata/_owd_uid = "MeshInstance3D"
 metadata/_owd_last_scale = Vector3(2, 2, 2)
 metadata/_owd_last_size = 1.9999996
 
@@ -141,7 +141,7 @@ metadata/_owd_last_size = 1.9999996
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0432496, 0, 0)
 mesh = SubResource("TorusMesh_l13gw")
 skeleton = NodePath("../..")
-metadata/_owd_uid = &"MeshInstance3D6"
+metadata/_owd_uid = "MeshInstance3D6"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.0
 

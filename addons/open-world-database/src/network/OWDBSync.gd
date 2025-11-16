@@ -245,8 +245,7 @@ func _check_watched_variables() -> void:
 func _check_if_pre_existing() -> bool:
 	if not multiplayer or not multiplayer.has_multiplayer_peer():
 		return true
-	var loaded_nodes = Syncer.nodes.get_loaded()
-	return not loaded_nodes.has(parent_name)
+	return not Syncer.loaded_nodes.has(parent_name)
 
 func _get_parent_path() -> String:
 	var current_parent = parent.get_parent()

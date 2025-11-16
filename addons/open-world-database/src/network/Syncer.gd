@@ -2,9 +2,9 @@
 @tool
 extends Node
 
-var nodes: Nodes
 var _sync_nodes: Dictionary = {}  # node_name -> SyncNodeData
 var _peer_nodes_observing: Dictionary = {}
+var loaded_nodes: Dictionary = {} # node_name -> Node (track our own loaded nodes)
 
 # OWDB Integration - now managed by OWDB itself
 var owdb: OpenWorldDatabase = null
@@ -43,7 +43,6 @@ class SyncNodeData:
 		sync_component = sync_comp
 
 func _ready() -> void:
-	nodes = load("res://addons/open-world-database/src/Nodes.gd").new(self)
 	if owdb:
 		owdb.debug("SYNCER READY")
 	for key in transform_mappings:
@@ -250,6 +249,7 @@ func _process(_delta: float) -> void:
 		owdb.debug("peer_nodes_observing: ", _peer_nodes_observing)
 		owdb.debug("peer_positions: ", _peer_positions.keys())
 		owdb.debug("owdb_registered: ", owdb != null)
+		owdb.debug("loaded_nodes: ", loaded_nodes.keys())
 
 # NEW: Check if a node is already registered
 func is_node_registered(node: Node3D) -> bool:
@@ -266,7 +266,8 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 	
 	_sync_nodes[node_name] = sync_data
 	
-	owdb.debug("Registered node: ", node_name, " (has OWDBSync: ", sync_component != null, ")")
+	if owdb:
+		owdb.debug("Registered node: ", node_name, " (has OWDBSync: ", sync_component != null, ")")
 	
 	# Connect to node signals for automatic cleanup
 	if not node.tree_exiting.is_connected(_on_node_tree_exiting):
@@ -292,13 +293,14 @@ func unregister_node(node: Node3D) -> void:
 		for peer_id in _peer_nodes_observing.keys():
 			if peer_has_node(peer_id, node_name):
 				if peer_id == 1:
-					remove_node(node_name)
+					_remove_node_locally(node_name)
 				else:
 					rpc_id(peer_id, "remove_node", node_name)
 				_peer_nodes_observing[peer_id].erase(node_name)
 	
 	_sync_nodes.erase(node_name)
-	owdb.debug("Unregistered node: ", node_name)
+	if owdb:
+		owdb.debug("Unregistered node: ", node_name)
 
 # NEW: Handle node cleanup when it exits tree
 func _on_node_tree_exiting(node: Node3D):
@@ -307,8 +309,24 @@ func _on_node_tree_exiting(node: Node3D):
 func _check_if_pre_existing(node_name: String) -> bool:
 	if not multiplayer or not multiplayer.has_multiplayer_peer():
 		return true
-	var loaded_nodes = nodes.get_loaded()
 	return not loaded_nodes.has(node_name)
+
+# Helper method to find nodes in the scene tree
+func _find_node_by_name(node_name: String) -> Node:
+	if loaded_nodes.has(node_name):
+		return loaded_nodes[node_name]
+	
+	var tree = get_tree()
+	if tree.current_scene and tree.current_scene.has_node(node_name):
+		return tree.current_scene.get_node(node_name)
+	
+	return get_node("/root").find_child(node_name, true, false)
+
+func _remove_node_locally(node_name: String):
+	var node = _find_node_by_name(node_name)
+	if node and is_instance_valid(node):
+		node.queue_free()
+	loaded_nodes.erase(node_name)
 
 # UPDATED: Sync variables now works with both types of nodes
 func sync_variables(node_name: String, variables_in: Dictionary, force_send_to_all: bool = false, sender_peer_id: int = -1) -> void:
@@ -430,7 +448,8 @@ func handle_client_connected_to_server() -> void:
 	for node_name in _sync_nodes.keys():
 		var sync_data = _sync_nodes[node_name]
 		if sync_data.is_pre_existing:
-			owdb.debug("Transferring control of pre-existing node to server: ", node_name)
+			if owdb:
+				owdb.debug("Transferring control of pre-existing node to server: ", node_name)
 			sync_data.peer_id = 1
 			sync_data.is_pre_existing = false
 
@@ -439,17 +458,20 @@ func _check_and_request_resources(node_name: String, properties: Dictionary):
 	var missing_resources = []
 	_collect_missing_resource_ids(properties, missing_resources)
 	
-	owdb.debug("Checking resources for node: ", node_name)
-	owdb.debug("Properties: ", properties)
-	owdb.debug("Missing resources: ", missing_resources)
+	if owdb:
+		owdb.debug("Checking resources for node: ", node_name)
+		owdb.debug("Properties: ", properties)
+		owdb.debug("Missing resources: ", missing_resources)
 	
 	if missing_resources.is_empty():
 		# All resources available, create the node immediately
-		owdb.debug("All resources available for: ", node_name)
+		if owdb:
+			owdb.debug("All resources available for: ", node_name)
 		_create_pending_node(node_name)
 		return
 	
-	owdb.debug("Node ", node_name, " needs ", missing_resources.size(), " resources: ", missing_resources)
+	if owdb:
+		owdb.debug("Node ", node_name, " needs ", missing_resources.size(), " resources: ", missing_resources)
 	
 	# Store node data for later creation
 	if not _pending_nodes.has(node_name):
@@ -463,7 +485,8 @@ func _check_and_request_resources(node_name: String, properties: Dictionary):
 			_resource_requests[resource_id] = []
 			# Only request if we're not already requesting it
 			rpc_id(1, "request_resource", resource_id)
-			owdb.debug("Requesting resource: ", resource_id)
+			if owdb:
+				owdb.debug("Requesting resource: ", resource_id)
 		
 		if not _resource_requests[resource_id].has(node_name):
 			_resource_requests[resource_id].append(node_name)
@@ -496,17 +519,19 @@ func _create_pending_node(node_name: String):
 	var node_data = _pending_nodes[node_name]
 	_pending_nodes.erase(node_name)
 	
-	# Create the node using existing logic
-	nodes.add_id(
-		node_name,
-		node_data.scene,
-		node_data.parent_path,
-		func(entity: Node) -> void:
-			# Set scale before calling entity_sync_setup
-			if entity is Node3D:
-				entity.scale = node_data.scale
-			entity_sync_setup(entity, node_data.scene, node_data.position, node_data.rotation, node_data.peer_id, node_data.initial_variables)
-	)
+	# Create the node using BatchProcessor directly
+	if owdb and owdb.batch_processor:
+		owdb.batch_processor.instantiate_scene(
+			node_data.scene,
+			node_name,
+			node_data.parent_path,
+			func(entity: Node) -> void:
+				# Set scale before calling entity_sync_setup
+				if entity is Node3D:
+					entity.scale = node_data.scale
+				entity_sync_setup(entity, node_data.scene, node_data.position, node_data.rotation, node_data.peer_id, node_data.initial_variables)
+				loaded_nodes[node_name] = entity
+		)
 
 # Resource request/response RPCs
 @rpc("any_peer", "reliable")
@@ -514,7 +539,8 @@ func request_resource(resource_id: String) -> void:
 	if not multiplayer.is_server():
 		return
 	
-	owdb.debug("Peer ", multiplayer.get_remote_sender_id(), " requested resource: ", resource_id)
+	if owdb:
+		owdb.debug("Peer ", multiplayer.get_remote_sender_id(), " requested resource: ", resource_id)
 	
 	# Get resource data from OWDB
 	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
@@ -531,13 +557,16 @@ func request_resource(resource_id: String) -> void:
 			
 			var requester_id = multiplayer.get_remote_sender_id()
 			rpc_id(requester_id, "receive_resource", resource_id, resource_data)
-			owdb.debug("Sent resource ", resource_id, " to peer ", requester_id)
+			if owdb:
+				owdb.debug("Sent resource ", resource_id, " to peer ", requester_id)
 		else:
-			owdb.debug("Resource not found: ", resource_id)
+			if owdb:
+				owdb.debug("Resource not found: ", resource_id)
 
 @rpc("authority", "reliable")
 func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
-	owdb.debug("Received resource: ", resource_id)
+	if owdb:
+		owdb.debug("Received resource: ", resource_id)
 	
 	# Register resource in local OWDB
 	if owdb and owdb.node_monitor and owdb.node_monitor.resource_manager:
@@ -569,13 +598,15 @@ func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
 				
 				# If all resources are now available, create the node
 				if node_data.missing_resources.is_empty():
-					owdb.debug("All resources received for node: ", node_name)
+					if owdb:
+						owdb.debug("All resources received for node: ", node_name)
 					_create_pending_node(node_name)
 
 @rpc("authority", "reliable")
 func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
 	if _sync_nodes.has(node_name):
-		owdb.debug("taking control of existing node ", node_name)
+		if owdb:
+			owdb.debug("taking control of existing node ", node_name)
 		var sync_data = _sync_nodes[node_name]
 		sync_data.peer_id = peer_id
 		sync_data.parent.position = position
@@ -588,7 +619,8 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		_apply_variables_to_node(sync_data, initial_variables)
 		return
 	
-	owdb.debug("add_node ", node_name, " at path: ", parent_path)
+	if owdb:
+		owdb.debug("add_node ", node_name, " at path: ", parent_path)
 	
 	# Store node creation data
 	_pending_nodes[node_name] = {
@@ -606,7 +638,8 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 
 @rpc("authority", "reliable")
 func remove_node(node_name: String) -> void:
-	owdb.debug("remove_node ", node_name)
+	if owdb:
+		owdb.debug("remove_node ", node_name)
 	
 	# Clean up pending node data if it exists
 	_pending_nodes.erase(node_name)
@@ -617,7 +650,7 @@ func remove_node(node_name: String) -> void:
 		if _resource_requests[resource_id].is_empty():
 			_resource_requests.erase(resource_id)
 	
-	nodes.remove(node_name)
+	_remove_node_locally(node_name)
 
 @rpc("any_peer", "reliable")
 func update_node(node_name: String, new_variables: Dictionary) -> void:
@@ -638,7 +671,8 @@ func handle_peer_connected(peer_id: int) -> void:
 		if not _peer_nodes_observing.has(peer_id):
 			_peer_nodes_observing[peer_id] = []
 		
-		owdb.debug("Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
+		if owdb:
+			owdb.debug("Peer ", peer_id, " connected. Current nodes: ", _sync_nodes.keys())
 		
 		if owdb:
 			call_deferred("_update_new_peer_visibility", peer_id)
@@ -660,7 +694,7 @@ func handle_peer_disconnected(peer_id: int) -> void:
 			if _sync_nodes.has(node_name):
 				var sync_data = _sync_nodes[node_name]
 				unregister_node(sync_data.parent)
-			nodes.remove(node_name)
+			_remove_node_locally(node_name)
 
 # UPDATED: Apply properties with resource support for OWDB entities
 func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: Vector3, peer_id: int, initial_variables: Dictionary) -> void:
@@ -677,4 +711,5 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 	if owdb and not initial_variables.is_empty():
 		# Use OWDB's property application system which handles resources
 		owdb.node_monitor.apply_stored_properties(node, initial_variables)
-		owdb.debug("Applied OWDB properties with resources to: ", node.name)
+		if owdb:
+			owdb.debug("Applied OWDB properties with resources to: ", node.name)
