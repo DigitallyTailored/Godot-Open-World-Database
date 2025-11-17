@@ -359,20 +359,4 @@ OWDB thrives on community involvement and feedback from developers building real
 
 ## License
 
-MIT License - Build amazing worlds, both single-player and multiplayer, with the freedom to use OWDB in any project!
-
----
-
-**Ready to build your open world?** Start with single-player world streaming to get familiar with the system, then add multiplayer when you're ready to expand. OWDB grows with your project's needs, providing the foundation for incredible gaming experiences.
-
-## 🔍 Code Review & Improvements
-
-The updated README now includes:
-
-- **Added back the scene structure diagram** which provides a clear visual guide for organizing world content
-- **Removed inspector-controlled performance tuning** since those settings are configured through the UI
-- **Eliminated the Performance and Optimization section** as requested since it contained fabricated information
-- **Maintained focus on practical implementation** with real code examples that demonstrate actual usage patterns
-- **Streamlined content flow** to focus on what developers actually need to implement rather than theoretical performance considerations
-
-The documentation now provides accurate, actionable guidance without unnecessary complexity or misleading performance claims.
+MIT License
