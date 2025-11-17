@@ -1,6 +1,6 @@
 # src/NodeHandler.gd
 # Handles node lifecycle events and coordinates with chunk system for loading decisions
-# Manages node entering/exiting tree, moves, renames, and duplicate UID resolution
+# Manages node entering/exiting tree, moves, renames, type changes, and duplicate UID resolution
 # Ensures nodes are loaded/unloaded based on chunk requirements
 # Input: Tree change signals, node modifications
 # Output: Node database updates, chunk lookup maintenance, deferred unloading
@@ -60,6 +60,9 @@ func handle_child_exiting_tree(node: Node):
 
 func _handle_node_move(node: Node):
 	owdb.debug("NODE MOVED: ", node.name)
+	
+	# Check for type changes when node moves
+	handle_node_type_change(node)
 	
 	owdb.node_monitor.update_stored_node(node)
 	
@@ -135,3 +138,54 @@ func handle_node_rename(node: Node) -> bool:
 	owdb.batch_processor.remove_from_queues(old_uid)
 	
 	return true
+
+# NEW METHOD: Handle node type changes
+func handle_node_type_change(node: Node) -> bool:
+	var uid = NodeUtils.get_valid_node_uid(node)
+	if uid == "" or not owdb.node_monitor.stored_nodes.has(uid):
+		return false
+	
+	var stored_info = owdb.node_monitor.stored_nodes[uid]
+	var current_source = _get_node_source(node)
+	
+	# Check if the node type (source) has changed
+	if stored_info.scene != current_source:
+		owdb.debug("NODE TYPE CHANGED: " + uid + " from " + stored_info.scene + " to " + current_source)
+		
+		# Store old size and position for chunk lookup cleanup
+		var old_position = stored_info.position
+		var old_size = stored_info.size
+		
+		# Force recalculate size since node type changed
+		var new_size = NodeUtils.calculate_node_size(node, true)
+		var new_position = node.global_position if node is Node3D else Vector3.ZERO
+		
+		# Update stored info
+		stored_info.scene = current_source
+		stored_info.size = new_size
+		stored_info.position = new_position
+		
+		# Remove from old chunk lookup
+		owdb.remove_from_chunk_lookup(uid, old_position, old_size)
+		
+		# Add to new chunk lookup
+		owdb.add_to_chunk_lookup(uid, new_position, new_size)
+		
+		# Check if the node should still be loaded in its current chunk
+		var new_size_cat = owdb.get_size_category(new_size)
+		var new_chunk_pos = Vector2i(int(new_position.x / owdb.chunk_sizes[new_size_cat]), int(new_position.z / owdb.chunk_sizes[new_size_cat])) if new_size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
+		
+		# If the node should no longer be loaded (e.g., changed to a type that puts it in an unloaded chunk)
+		if not owdb.chunk_manager.is_chunk_loaded(new_size_cat, new_chunk_pos):
+			owdb.debug("NODE TYPE CHANGE REQUIRES UNLOAD: ", uid)
+			owdb.call_deferred("_unload_node_not_in_chunk", node)
+		
+		owdb.debug("NODE TYPE UPDATE COMPLETE: " + uid + " size: " + str(old_size) + " -> " + str(new_size))
+		return true
+	
+	return false
+
+func _get_node_source(node: Node) -> String:
+	if node.scene_file_path != "":
+		return node.scene_file_path
+	return node.get_class()

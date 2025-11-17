@@ -91,8 +91,10 @@ func _save_database_to_path(db_path: String):
 		if not is_instance_valid(node):
 			owdb.loaded_nodes_by_uid.erase(uid)
 			continue
-			
+		
 		owdb.node_handler.handle_node_rename(node)
+		
+		owdb.node_handler.handle_node_type_change(node)
 		
 		var old_info = owdb.node_monitor.stored_nodes.get(uid, {})
 		owdb.node_monitor.update_stored_node(node, true)
@@ -118,6 +120,7 @@ func _save_database_to_path(db_path: String):
 	
 	file.close()
 	owdb.debug("Database saved successfully with resources to: ", db_path)
+
 
 func _write_resource_registry(file: FileAccess):
 	var resources = owdb.node_monitor.resource_manager.serialize_resources()
