@@ -26,19 +26,21 @@ Building your world with OWDB follows Godot's natural scene structure patterns. 
 
 ```gdscript
 # Create your scene structure like this:
+	
 Main Scene
-└── OpenWorldDatabase
-	├── Town
-	│   ├── Shop Buildings (with interiors, NPCs)
-	│   ├── Public Areas (with furniture, decorations)
-	│   └── Guard Patrols (moving NPCs)
-	├── Wilderness
-	│   ├── Outpost Areas
-	│   ├── Points of Interest
-	│   └── Wildlife Spawns
-	├── Important Landmarks
+├── OpenWorldDatabase
+│   ├── Town
+│   │   ├── Shop Buildings (with interiors, NPCs)
+│   │   ├── Public Areas (with furniture, decorations)
+│   │   └── Guard Patrols (moving NPCs)
+│   ├── Wilderness
+│   │   ├── Outpost Areas
+│   │   ├── Points of Interest
+│   │   └── Wildlife Spawns
+│   └── Important Landmarks
 └── Player
 	└── OWDBPosition  # This triggers chunk loading around player
+	
 ```
 
 ### Step 2: Configure Your World
