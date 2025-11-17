@@ -57,12 +57,8 @@ surface_material_override/0 = SubResource("StandardMaterial3D_iuy40")
 
 [node name="Grass" type="Node3D" parent="." node_paths=PackedStringArray("terrain_generator", "camera")]
 script = ExtResource("4_bsqx8")
-grass_density = 400
-grass_height_min = 0.5
-grass_height_max = 0.7
-grass_width = 0.05
-view_distance = 40.0
-min_terrain_height = 0.325
+grass_width = 0.1
+view_distance = 32.0
 max_chunks_per_frame = 1
 grass_shader = ExtResource("5_tmr3h")
 max_tilt_angle = 55.0

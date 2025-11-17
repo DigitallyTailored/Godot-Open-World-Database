@@ -2,8 +2,8 @@
 extends Node3D
 class_name GrassManager
 
-## Dynamic Grass System with Height Map-based positioning
-## Uses height maps per chunk instead of individual height sampling
+## Dynamic Grass System with proper terrain height positioning
+## Positions grass instances at correct terrain height in GDScript
 
 @export_group("Grass Settings")
 @export var grass_density: int = 200
@@ -15,7 +15,6 @@ class_name GrassManager
 @export var chunk_size: float = 8.0
 @export var view_distance: float = 64.0
 @export var update_frequency: float = 1.0
-@export var height_map_resolution: int = 32  # Resolution of height map per chunk
 @export var min_terrain_height: float = 0.3
 
 @export_group("Performance")
@@ -39,21 +38,21 @@ var lod_configs = [
 	{
 		"name": "High",
 		"density_ratio": 1.0,
-		"height_ratio": 0.25,
+		"height_ratio": 1.0,
 		"range_end": 0.4,
 		"color": Color.GREEN
 	},
 	{
 		"name": "Medium", 
 		"density_ratio": 0.6,
-		"height_ratio": 0.5,
+		"height_ratio": 0.7,
 		"range_end": 0.75,
 		"color": Color.YELLOW
 	},
 	{
 		"name": "Low",
 		"density_ratio": 0.3,
-		"height_ratio": 1.0,
+		"height_ratio": 0.4,
 		"range_end": 1.0,
 		"color": Color.RED
 	}
@@ -65,7 +64,7 @@ var chunk_generation_queues: Array[Array] = []
 var last_camera_pos: Vector3
 var update_timer: float = 0.0
 
-# Cache for grass meshes by LoD level to avoid regenerating them
+# Cache for grass meshes by LoD level
 var grass_mesh_cache: Array[ArrayMesh] = []
 
 func _ready():
@@ -181,7 +180,6 @@ func get_chunks_in_range_for_lod(center: Vector3, max_range: float, range_end: f
 			var chunk_world_pos = chunk_coord_to_world_pos(chunk_coord)
 			var distance = center.distance_to(Vector3(chunk_world_pos.x, center.y, chunk_world_pos.z))
 			
-			# Each LoD level renders from 0 to its max range (stacking/additive)
 			if distance <= range_end:
 				chunks.append(chunk_coord)
 	
@@ -224,21 +222,18 @@ func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos
 	var chunk_density = get_density_for_lod(lod_level)
 	var height_ratio = get_height_ratio_for_lod(lod_level)
 	
-	# Generate uniform grass positions (no terrain height sampling here)
-	var grass_positions = generate_uniform_grass_positions_in_chunk(world_pos, chunk_density, lod_level)
+	# SIMPLIFIED: Generate grass positions with proper terrain height sampling
+	var grass_positions = generate_grass_positions_with_terrain_height(world_pos, chunk_density, lod_level)
 	
 	if grass_positions.is_empty():
 		return
 	
-	# Generate height map for this chunk
-	var height_map = generate_height_map_for_chunk(world_pos)
-	
-	# Create MultiMeshInstance3D with LoD-specific naming
+	# Create MultiMeshInstance3D
 	var multi_mesh_instance = MultiMeshInstance3D.new()
-	multi_mesh_instance.name = "GrassChunk_" + config.name + "_" + str(chunk_coord) + "_D" + str(chunk_density) + "_H" + str(height_ratio)
+	multi_mesh_instance.name = "GrassChunk_" + config.name + "_" + str(chunk_coord)
 	add_child(multi_mesh_instance)
 	
-	# Create MultiMesh with cached mesh for this LoD level
+	# Create MultiMesh
 	var multi_mesh = MultiMesh.new()
 	multi_mesh.transform_format = MultiMesh.TRANSFORM_3D
 	multi_mesh.instance_count = grass_positions.size()
@@ -268,16 +263,16 @@ func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos
 			transform = transform.rotated(Vector3.RIGHT, tilt_x)
 			transform = transform.rotated(Vector3.FORWARD, tilt_z)
 		
-		var scale_xz = rng.randf_range(0.8, 1.2)  # Simplified XZ variation
-		transform = transform.scaled(Vector3(scale_xz, 1.0, scale_xz))  # Y scale = 1.0 (no change)
+		var scale_xz = rng.randf_range(0.8, 1.2)
+		transform = transform.scaled(Vector3(scale_xz, 1.0, scale_xz))
 		
-		transform.origin = pos
+		transform.origin = pos  # pos already includes correct terrain height
 		multi_mesh.set_instance_transform(i, transform)
 	
 	multi_mesh_instance.multimesh = multi_mesh
 	
-	# Create material and pass height map to shader
-	var material = create_grass_material_with_height_map(height_map, world_pos, height_ratio)
+	# Create simplified material
+	var material = create_simplified_grass_material(height_ratio)
 	multi_mesh_instance.material_override = material
 	
 	# Store chunk reference
@@ -288,52 +283,40 @@ func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos
 		"lod_level": lod_level,
 		"distance": distance_to_camera,
 		"density": chunk_density,
-		"height_ratio": height_ratio,
-		"height_map": height_map
+		"height_ratio": height_ratio
 	}
 
-
-# NEW: Generate uniform grass positions without terrain sampling
-func generate_uniform_grass_positions_in_chunk(chunk_world_pos: Vector3, density: int, lod_level: int) -> Array:
+# SIMPLIFIED: Generate grass positions with proper terrain height sampling
+func generate_grass_positions_with_terrain_height(chunk_world_pos: Vector3, density: int, lod_level: int) -> Array:
 	var positions = []
 	var half_chunk = chunk_size * 0.5
 	
-	# Include LoD level in seed to ensure different positions per LoD
 	var rng = RandomNumberGenerator.new()
 	rng.seed = hash(str(Vector2i(chunk_world_pos.x, chunk_world_pos.z)) + "_lod" + str(lod_level))
 	
-	# Generate uniform random positions - all at ground level (y=0)
-	# The shader will handle height positioning
 	for i in range(density):
 		var local_x = rng.randf_range(-half_chunk, half_chunk)
 		var local_z = rng.randf_range(-half_chunk, half_chunk)
 		var world_x = chunk_world_pos.x + local_x
 		var world_z = chunk_world_pos.z + local_z
 		
-		# Start all grass at y=0, shader will position them correctly
-		positions.append(Vector3(world_x, 0, world_z))
+		# Sample terrain height directly using terrain generator
+		var terrain_height = 0.0
+		if terrain_generator and terrain_generator.has_method("get_height_at_position"):
+			terrain_height = terrain_generator.get_height_at_position(Vector3(world_x, 0, world_z))
+			
+			# Filter based on terrain height (same logic as before)
+			var normalized_height = terrain_height / terrain_generator.height_scale
+			if normalized_height >= terrain_generator.sand_level and normalized_height < terrain_generator.rock_level:
+				positions.append(Vector3(world_x, terrain_height, world_z))
 	
 	return positions
 
-# NEW: Generate height map for a chunk
-func generate_height_map_for_chunk(chunk_world_pos: Vector3) -> ImageTexture:
-	if terrain_generator and terrain_generator.has_method("generate_height_map_for_chunk"):
-		return terrain_generator.generate_height_map_for_chunk(chunk_world_pos, chunk_size, height_map_resolution)
-	else:
-		# Fallback: create a flat height map
-		var image = Image.create(height_map_resolution, height_map_resolution, false, Image.FORMAT_RF)
-		image.fill(Color(0.5, 0, 0, 1))  # Neutral height
-		var texture = ImageTexture.new()
-		texture.set_image(image)
-		return texture
-
-# NEW: Get or create grass mesh for specific LoD level (cached)
 func get_grass_mesh_for_lod(lod_level: int) -> ArrayMesh:
 	if grass_mesh_cache[lod_level] == null:
 		grass_mesh_cache[lod_level] = create_consistent_grass_mesh()
 	return grass_mesh_cache[lod_level]
 
-# Helper function to add vertex data to surface tool
 func add_vertex_to_surface(surface_tool: SurfaceTool, vertex_data: Dictionary):
 	if vertex_data.has("uv"):
 		surface_tool.set_uv(vertex_data.uv)
@@ -341,17 +324,14 @@ func add_vertex_to_surface(surface_tool: SurfaceTool, vertex_data: Dictionary):
 		surface_tool.set_color(vertex_data.color)
 	surface_tool.add_vertex(vertex_data.position)
 
-# UPDATED: Create perfectly consistent grass blade mesh
 func create_consistent_grass_mesh() -> ArrayMesh:
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	
-	# Use fixed height - no randomization at all
-	var height = grass_height_max  # Always use max height, shader handles scaling
+	var height = 1.0
 	var width = grass_width
 	var half_width = width * 0.5
 	
-	# Create exactly the same grass blade every time
 	var vertex_data = [
 		{"position": Vector3(-half_width, 0, 0), "uv": Vector2(0, 0)},
 		{"position": Vector3(half_width, 0, 0), "uv": Vector2(1, 0)},
@@ -413,36 +393,23 @@ func create_consistent_grass_mesh() -> ArrayMesh:
 	surface_tool.generate_normals()
 	return surface_tool.commit()
 
-
-# UPDATED: Create grass material with height map and height ratio
-func create_grass_material_with_height_map(height_map: ImageTexture, chunk_world_pos: Vector3, height_ratio: float) -> ShaderMaterial:
+# SIMPLIFIED: Create basic material without height map complexity
+func create_simplified_grass_material(height_ratio: float) -> ShaderMaterial:
 	var material = ShaderMaterial.new()
 	
 	if grass_shader:
 		material.shader = grass_shader.shader
-		# Copy all existing shader parameters
+		# Copy existing shader parameters
 		var shader_params = grass_shader.get_property_list()
 		for param in shader_params:
 			if param.name.begins_with("shader_parameter/"):
 				var param_name = param.name.replace("shader_parameter/", "")
 				material.set_shader_parameter(param_name, grass_shader.get_shader_parameter(param_name))
 	
-	# Set height map specific parameters
-	material.set_shader_parameter("height_map", height_map)
-	material.set_shader_parameter("chunk_world_pos", chunk_world_pos)
-	material.set_shader_parameter("chunk_size", chunk_size)
-	material.set_shader_parameter("height_scale", terrain_generator.height_scale if terrain_generator else 10.0)
-	material.set_shader_parameter("min_terrain_height", min_terrain_height)
-	material.set_shader_parameter("lod_height_ratio", height_ratio)  # NEW: Pass height ratio to shader
-	material.set_shader_parameter("grass_height_min", grass_height_min)  # NEW
-	material.set_shader_parameter("grass_height_max", grass_height_max)  # NEW
-	
-	# Terrain level thresholds for grass filtering
-	if terrain_generator:
-		material.set_shader_parameter("water_level", terrain_generator.water_level)
-		material.set_shader_parameter("sand_level", terrain_generator.sand_level)
-		material.set_shader_parameter("grass_level", terrain_generator.grass_level)
-		material.set_shader_parameter("rock_level", terrain_generator.rock_level)
+	# Set LoD height ratio for shader scaling
+	material.set_shader_parameter("lod_height_ratio", height_ratio)
+	material.set_shader_parameter("grass_height_min", grass_height_min)
+	material.set_shader_parameter("grass_height_max", grass_height_max)
 	
 	return material
 
@@ -458,13 +425,11 @@ func clear_all_grass():
 		for chunk_key in active_chunks_by_lod[lod_level].keys():
 			remove_grass_chunk_from_lod(lod_level, chunk_key)
 		chunk_generation_queues[lod_level].clear()
-		# Clear mesh cache
 		grass_mesh_cache[lod_level] = null
 
-# Debug function to show LoD levels
 func get_debug_info() -> String:
-	var info = "Height Map-based LoD System Status:\n"
-	info += "Chunk Size: %.1f, View Distance: %.1f, Height Map Resolution: %d\n" % [chunk_size, view_distance, height_map_resolution]
+	var info = "Simplified Grass System Status:\n"
+	info += "Chunk Size: %.1f, View Distance: %.1f\n" % [chunk_size, view_distance]
 	for i in range(lod_configs.size()):
 		var config = lod_configs[i]
 		var chunk_count = active_chunks_by_lod[i].size()
