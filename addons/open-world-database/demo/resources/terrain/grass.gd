@@ -2,8 +2,7 @@
 extends Node3D
 class_name GrassManager
 
-## Dynamic Grass System with proper terrain height positioning
-## Positions grass instances at correct terrain height in GDScript
+## Simplified Dynamic Grass System with terrain height positioning
 
 @export_group("Grass Settings")
 @export var grass_density: int = 200
@@ -20,9 +19,6 @@ class_name GrassManager
 @export_group("Performance")
 @export var max_chunks_per_frame: int = 2
 
-@export_group("LoD Settings")
-@export var enable_lod: bool = true
-
 @export_group("Shader Settings")
 @export var grass_shader: ShaderMaterial
 
@@ -33,51 +29,14 @@ class_name GrassManager
 @export var terrain_generator: Node3D
 @export var camera: Camera3D
 
-# LoD level configurations
-var lod_configs = [
-	{
-		"name": "High",
-		"density_ratio": 1.0,
-		"height_ratio": 1.0,
-		"range_end": 0.4,
-		"color": Color.GREEN
-	},
-	{
-		"name": "Medium", 
-		"density_ratio": 0.6,
-		"height_ratio": 0.7,
-		"range_end": 0.75,
-		"color": Color.YELLOW
-	},
-	{
-		"name": "Low",
-		"density_ratio": 0.3,
-		"height_ratio": 0.4,
-		"range_end": 1.0,
-		"color": Color.RED
-	}
-]
-
 # Internal variables
-var active_chunks_by_lod: Array[Dictionary] = []
-var chunk_generation_queues: Array[Array] = []
+var active_chunks: Dictionary = {}
+var chunk_generation_queue: Array = []
 var last_camera_pos: Vector3
 var update_timer: float = 0.0
-
-# Cache for grass meshes by LoD level
-var grass_mesh_cache: Array[ArrayMesh] = []
+var grass_mesh_cache: ArrayMesh
 
 func _ready():
-	# Initialize arrays for each LoD level
-	active_chunks_by_lod.resize(lod_configs.size())
-	chunk_generation_queues.resize(lod_configs.size())
-	grass_mesh_cache.resize(lod_configs.size())
-	
-	for i in range(lod_configs.size()):
-		active_chunks_by_lod[i] = {}
-		chunk_generation_queues[i] = []
-		grass_mesh_cache[i] = null
-	
 	if not camera:
 		if Engine.is_editor_hint():
 			var viewport = EditorInterface.get_editor_viewport_3d(0)
@@ -103,41 +62,20 @@ func _process(delta):
 		last_camera_pos = camera_pos
 		update_timer = 0.0
 	
-	process_all_chunk_queues()
-
-func get_density_for_lod(lod_level: int) -> int:
-	return int(grass_density * lod_configs[lod_level].density_ratio)
-
-func get_height_ratio_for_lod(lod_level: int) -> float:
-	return lod_configs[lod_level].height_ratio
-
-func get_view_distance_for_lod(lod_level: int) -> float:
-	return view_distance * lod_configs[lod_level].range_end
+	process_chunk_queue()
 
 func update_grass_around_camera():
-	if not camera or not enable_lod:
+	if not camera:
 		return
 	
 	var camera_pos = camera.global_position
-	
-	# Process each LoD level separately
-	for lod_level in range(lod_configs.size()):
-		update_lod_level(lod_level, camera_pos)
-
-func update_lod_level(lod_level: int, camera_pos: Vector3):
-	var config = lod_configs[lod_level]
-	var lod_view_distance = get_view_distance_for_lod(lod_level)
-	var range_end = view_distance * config.range_end
-	
 	var chunks_to_keep: Dictionary = {}
-	var active_chunks = active_chunks_by_lod[lod_level]
-	var generation_queue = chunk_generation_queues[lod_level]
 	
-	# Get chunks from camera position to the LoD's max range
-	var chunks_in_range = get_chunks_in_range_for_lod(camera_pos, lod_view_distance, range_end)
+	# Get all chunks in range
+	var chunks_in_range = get_chunks_in_range(camera_pos, view_distance)
 	
 	for chunk_coord in chunks_in_range:
-		var chunk_key = str(chunk_coord) + "_lod" + str(lod_level)
+		var chunk_key = str(chunk_coord)
 		var chunk_world_pos = chunk_coord_to_world_pos(chunk_coord)
 		var distance_to_camera = camera_pos.distance_to(Vector3(chunk_world_pos.x, camera_pos.y, chunk_world_pos.z))
 		
@@ -147,31 +85,30 @@ func update_lod_level(lod_level: int, camera_pos: Vector3):
 		if not active_chunks.has(chunk_key):
 			# Check if already queued
 			var already_queued = false
-			for queued_chunk in generation_queue:
+			for queued_chunk in chunk_generation_queue:
 				if queued_chunk.coord == chunk_coord:
 					already_queued = true
 					break
 			
 			if not already_queued:
-				generation_queue.append({
+				chunk_generation_queue.append({
 					"coord": chunk_coord,
 					"world_pos": chunk_world_pos,
-					"distance": distance_to_camera,
-					"lod_level": lod_level
+					"distance": distance_to_camera
 				})
 	
-	# Remove chunks that are out of range for this LoD level
+	# Remove chunks that are out of range
 	var chunks_to_remove = []
 	for chunk_key in active_chunks.keys():
 		if not chunks_to_keep.has(chunk_key):
 			chunks_to_remove.append(chunk_key)
 	
 	for chunk_key in chunks_to_remove:
-		remove_grass_chunk_from_lod(lod_level, chunk_key)
+		remove_grass_chunk(chunk_key)
 
-func get_chunks_in_range_for_lod(center: Vector3, max_range: float, range_end: float) -> Array:
+func get_chunks_in_range(center: Vector3, max_range: float) -> Array:
 	var chunks = []
-	var chunk_range = int(ceil(range_end / chunk_size))
+	var chunk_range = int(ceil(max_range / chunk_size))
 	var center_chunk = world_pos_to_chunk_coord(center)
 	
 	for x in range(-chunk_range, chunk_range + 1):
@@ -180,7 +117,7 @@ func get_chunks_in_range_for_lod(center: Vector3, max_range: float, range_end: f
 			var chunk_world_pos = chunk_coord_to_world_pos(chunk_coord)
 			var distance = center.distance_to(Vector3(chunk_world_pos.x, center.y, chunk_world_pos.z))
 			
-			if distance <= range_end:
+			if distance <= max_range:
 				chunks.append(chunk_coord)
 	
 	return chunks
@@ -198,50 +135,40 @@ func chunk_coord_to_world_pos(chunk_coord: Vector2i) -> Vector3:
 		chunk_coord.y * chunk_size + chunk_size * 0.5
 	)
 
-func process_all_chunk_queues():
-	var total_chunks_generated = 0
+func process_chunk_queue():
+	var chunks_generated = 0
 	
-	# Process queues in order of priority (closest LoD first)
-	for lod_level in range(lod_configs.size()):
-		if total_chunks_generated >= max_chunks_per_frame:
-			break
-			
-		var generation_queue = chunk_generation_queues[lod_level]
-		
-		# Sort queue by distance (closest first)
-		generation_queue.sort_custom(func(a, b): return a.distance < b.distance)
-		
-		while generation_queue.size() > 0 and total_chunks_generated < max_chunks_per_frame:
-			var chunk_data = generation_queue.pop_front()
-			create_grass_chunk_for_lod(chunk_data.lod_level, chunk_data.coord, chunk_data.world_pos, chunk_data.distance)
-			total_chunks_generated += 1
+	# Sort queue by distance (closest first)
+	chunk_generation_queue.sort_custom(func(a, b): return a.distance < b.distance)
+	
+	while chunk_generation_queue.size() > 0 and chunks_generated < max_chunks_per_frame:
+		var chunk_data = chunk_generation_queue.pop_front()
+		create_grass_chunk(chunk_data.coord, chunk_data.world_pos, chunk_data.distance)
+		chunks_generated += 1
 
-func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos: Vector3, distance_to_camera: float = 0.0):
-	var config = lod_configs[lod_level]
-	var chunk_key = str(chunk_coord) + "_lod" + str(lod_level)
-	var chunk_density = get_density_for_lod(lod_level)
-	var height_ratio = get_height_ratio_for_lod(lod_level)
+func create_grass_chunk(chunk_coord: Vector2i, world_pos: Vector3, distance_to_camera: float = 0.0):
+	var chunk_key = str(chunk_coord)
 	
-	# SIMPLIFIED: Generate grass positions with proper terrain height sampling
-	var grass_positions = generate_grass_positions_with_terrain_height(world_pos, chunk_density, lod_level)
+	# Generate grass positions with proper terrain height sampling
+	var grass_positions = generate_grass_positions_with_terrain_height(world_pos)
 	
 	if grass_positions.is_empty():
 		return
 	
 	# Create MultiMeshInstance3D
 	var multi_mesh_instance = MultiMeshInstance3D.new()
-	multi_mesh_instance.name = "GrassChunk_" + config.name + "_" + str(chunk_coord)
+	multi_mesh_instance.name = "GrassChunk_" + str(chunk_coord)
 	add_child(multi_mesh_instance)
 	
 	# Create MultiMesh
 	var multi_mesh = MultiMesh.new()
 	multi_mesh.transform_format = MultiMesh.TRANSFORM_3D
 	multi_mesh.instance_count = grass_positions.size()
-	multi_mesh.mesh = get_grass_mesh_for_lod(lod_level)
+	multi_mesh.mesh = get_grass_mesh()
 	
 	# Use consistent random seed for this chunk
 	var rng = RandomNumberGenerator.new()
-	rng.seed = hash(str(chunk_coord) + str(lod_level))
+	rng.seed = hash(str(chunk_coord))
 	
 	# Set transforms for each grass instance
 	for i in range(grass_positions.size()):
@@ -266,35 +193,32 @@ func create_grass_chunk_for_lod(lod_level: int, chunk_coord: Vector2i, world_pos
 		var scale_xz = rng.randf_range(0.8, 1.2)
 		transform = transform.scaled(Vector3(scale_xz, 1.0, scale_xz))
 		
-		transform.origin = pos  # pos already includes correct terrain height
+		transform.origin = pos
 		multi_mesh.set_instance_transform(i, transform)
 	
 	multi_mesh_instance.multimesh = multi_mesh
 	
-	# Create simplified material
-	var material = create_simplified_grass_material(height_ratio)
+	# Create material
+	var material = create_grass_material()
 	multi_mesh_instance.material_override = material
 	
 	# Store chunk reference
-	active_chunks_by_lod[lod_level][chunk_key] = {
+	active_chunks[chunk_key] = {
 		"multimesh": multi_mesh_instance,
 		"position": world_pos,
 		"coord": chunk_coord,
-		"lod_level": lod_level,
 		"distance": distance_to_camera,
-		"density": chunk_density,
-		"height_ratio": height_ratio
+		"density": grass_density
 	}
 
-# SIMPLIFIED: Generate grass positions with proper terrain height sampling
-func generate_grass_positions_with_terrain_height(chunk_world_pos: Vector3, density: int, lod_level: int) -> Array:
+func generate_grass_positions_with_terrain_height(chunk_world_pos: Vector3) -> Array:
 	var positions = []
 	var half_chunk = chunk_size * 0.5
 	
 	var rng = RandomNumberGenerator.new()
-	rng.seed = hash(str(Vector2i(chunk_world_pos.x, chunk_world_pos.z)) + "_lod" + str(lod_level))
+	rng.seed = hash(str(Vector2i(chunk_world_pos.x, chunk_world_pos.z)))
 	
-	for i in range(density):
+	for i in range(grass_density):
 		var local_x = rng.randf_range(-half_chunk, half_chunk)
 		var local_z = rng.randf_range(-half_chunk, half_chunk)
 		var world_x = chunk_world_pos.x + local_x
@@ -305,26 +229,19 @@ func generate_grass_positions_with_terrain_height(chunk_world_pos: Vector3, dens
 		if terrain_generator and terrain_generator.has_method("get_height_at_position"):
 			terrain_height = terrain_generator.get_height_at_position(Vector3(world_x, 0, world_z))
 			
-			# Filter based on terrain height (same logic as before)
+			# Filter based on terrain height
 			var normalized_height = terrain_height / terrain_generator.height_scale
 			if normalized_height >= terrain_generator.sand_level and normalized_height < terrain_generator.rock_level:
 				positions.append(Vector3(world_x, terrain_height, world_z))
 	
 	return positions
 
-func get_grass_mesh_for_lod(lod_level: int) -> ArrayMesh:
-	if grass_mesh_cache[lod_level] == null:
-		grass_mesh_cache[lod_level] = create_consistent_grass_mesh()
-	return grass_mesh_cache[lod_level]
+func get_grass_mesh() -> ArrayMesh:
+	if grass_mesh_cache == null:
+		grass_mesh_cache = create_grass_mesh()
+	return grass_mesh_cache
 
-func add_vertex_to_surface(surface_tool: SurfaceTool, vertex_data: Dictionary):
-	if vertex_data.has("uv"):
-		surface_tool.set_uv(vertex_data.uv)
-	if vertex_data.has("color"):
-		surface_tool.set_color(vertex_data.color)
-	surface_tool.add_vertex(vertex_data.position)
-
-func create_consistent_grass_mesh() -> ArrayMesh:
+func create_grass_mesh() -> ArrayMesh:
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	
@@ -393,8 +310,14 @@ func create_consistent_grass_mesh() -> ArrayMesh:
 	surface_tool.generate_normals()
 	return surface_tool.commit()
 
-# SIMPLIFIED: Create basic material without height map complexity
-func create_simplified_grass_material(height_ratio: float) -> ShaderMaterial:
+func add_vertex_to_surface(surface_tool: SurfaceTool, vertex_data: Dictionary):
+	if vertex_data.has("uv"):
+		surface_tool.set_uv(vertex_data.uv)
+	if vertex_data.has("color"):
+		surface_tool.set_color(vertex_data.color)
+	surface_tool.add_vertex(vertex_data.position)
+
+func create_grass_material() -> ShaderMaterial:
 	var material = ShaderMaterial.new()
 	
 	if grass_shader:
@@ -406,37 +329,28 @@ func create_simplified_grass_material(height_ratio: float) -> ShaderMaterial:
 				var param_name = param.name.replace("shader_parameter/", "")
 				material.set_shader_parameter(param_name, grass_shader.get_shader_parameter(param_name))
 	
-	# Set LoD height ratio for shader scaling
-	material.set_shader_parameter("lod_height_ratio", height_ratio)
+	# Set basic shader parameters
 	material.set_shader_parameter("grass_height_min", grass_height_min)
 	material.set_shader_parameter("grass_height_max", grass_height_max)
 	
 	return material
 
-func remove_grass_chunk_from_lod(lod_level: int, chunk_key: String):
-	var active_chunks = active_chunks_by_lod[lod_level]
+func remove_grass_chunk(chunk_key: String):
 	if active_chunks.has(chunk_key):
 		var chunk_data = active_chunks[chunk_key]
 		chunk_data.multimesh.queue_free()
 		active_chunks.erase(chunk_key)
 
 func clear_all_grass():
-	for lod_level in range(lod_configs.size()):
-		for chunk_key in active_chunks_by_lod[lod_level].keys():
-			remove_grass_chunk_from_lod(lod_level, chunk_key)
-		chunk_generation_queues[lod_level].clear()
-		grass_mesh_cache[lod_level] = null
+	for chunk_key in active_chunks.keys():
+		remove_grass_chunk(chunk_key)
+	chunk_generation_queue.clear()
+	grass_mesh_cache = null
 
 func get_debug_info() -> String:
-	var info = "Simplified Grass System Status:\n"
+	var info = "Grass System Status:\n"
 	info += "Chunk Size: %.1f, View Distance: %.1f\n" % [chunk_size, view_distance]
-	for i in range(lod_configs.size()):
-		var config = lod_configs[i]
-		var chunk_count = active_chunks_by_lod[i].size()
-		var queue_count = chunk_generation_queues[i].size()
-		var range_end = view_distance * config.range_end
-		info += "LoD %d (%s): %d chunks, %d queued, density=%d, height=%.1fx, range=0.0-%.1f\n" % [
-			i, config.name, chunk_count, queue_count, 
-			get_density_for_lod(i), config.height_ratio, range_end
-		]
+	info += "Active Chunks: %d, Queued: %d, Density: %d\n" % [
+		active_chunks.size(), chunk_generation_queue.size(), grass_density
+	]
 	return info

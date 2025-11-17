@@ -34,6 +34,10 @@ uniform float lod_height_ratio = 1.0;
 uniform float grass_height_min = 0.3;
 uniform float grass_height_max = 0.8;
 
+// Distance-based fade (both width and ground sinking)
+uniform float fade_start_distance : hint_range(0.0, 200.0) = 0.0;
+uniform float fade_end_distance : hint_range(1.0, 300.0) = 16.0;
+
 varying float height_factor;
 varying vec3 world_position;
 varying vec2 blade_uv;
@@ -73,15 +77,36 @@ void vertex() {
     height_factor = UV.y;
     blade_uv = UV;
     
-    // Simple height scaling by LoD ratio (positioning is handled in GDScript)
+    // Get world position for wind calculations and distance
+    world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    
+    // Calculate distance from camera
+    vec3 camera_position = INV_VIEW_MATRIX[3].xyz;
+    float distance_to_camera = length(world_position - camera_position);
+    
+    // Calculate distance-based fade factor
+    float distance_fade = 1.0;
+    if (distance_to_camera > fade_start_distance) {
+        distance_fade = 1.0 - smoothstep(fade_start_distance, fade_end_distance, distance_to_camera);
+    }
+    
+    // Apply normal height scaling
     float final_height_scale = mix(grass_height_min, grass_height_max, lod_height_ratio);
     VERTEX.y *= final_height_scale;
     
-    // Get world position for wind calculations
-    world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    // EFFECT 1: Scale blade width based on distance (X axis controls width)
+    VERTEX.x *= distance_fade;
     
-    // Apply enhanced wind animation to upper vertices
-    if (height_factor > 0.01) {
+    // EFFECT 2: Offset grass downward along world Y axis based on distance
+    float ground_offset = final_height_scale * (1.0 - distance_fade);
+    
+    // Transform world Y offset to local space
+    vec3 world_offset = vec3(0.0, -ground_offset, 0.0);
+    vec3 local_offset = (inverse(MODEL_MATRIX) * vec4(world_offset, 0.0)).xyz;
+    VERTEX += local_offset;
+    
+    // Apply enhanced wind animation to upper vertices (only if grass is visible)
+    if (height_factor > 0.01 && distance_fade > 0.01) {
         float blade_variation = hash(world_position.xz * 0.1);
         
         vec2 wind_dir_norm = normalize(wind_direction);
@@ -113,6 +138,9 @@ void vertex() {
         
         wind_offset.x += turbulence_wind.x * wind_strength * wind_height_factor;
         wind_offset.z += turbulence_wind.y * wind_strength * wind_height_factor;
+        
+        // Scale wind effect by distance fade to avoid popping
+        wind_offset *= distance_fade;
         
         VERTEX += wind_offset;
     }
