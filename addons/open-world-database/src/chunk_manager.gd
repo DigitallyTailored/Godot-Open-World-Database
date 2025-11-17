@@ -19,6 +19,7 @@ var batch_callback_registered: bool = false
 var _syncer_notified_entities: Dictionary = {}
 var _autonomous_chunk_management: bool = true
 var _current_network_mode: OpenWorldDatabase.NetworkMode = OpenWorldDatabase.NetworkMode.HOST
+var _load_all_chunks_mode: bool = false
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
@@ -33,6 +34,7 @@ func reset():
 	pending_chunk_operations.clear()
 	_syncer_notified_entities.clear()
 	_autonomous_chunk_management = true
+	_load_all_chunks_mode = false
 	batch_callback_registered = false
 
 func set_network_mode(mode: OpenWorldDatabase.NetworkMode):
@@ -47,6 +49,104 @@ func clear_autonomous_chunk_management():
 func enable_autonomous_chunk_management():
 	_autonomous_chunk_management = true
 	owdb.debug("ChunkManager: Autonomous chunk management enabled (HOST mode)")
+
+func enable_load_all_chunks_mode():
+	_load_all_chunks_mode = true
+	owdb.debug("ChunkManager: Load all chunks mode ENABLED - loading entire world")
+	_load_all_available_chunks()
+
+func disable_load_all_chunks_mode():
+	_load_all_chunks_mode = false
+	owdb.debug("ChunkManager: Load all chunks mode DISABLED - returning to position-based loading")
+	
+	# Clear all current requirements and rebuild based on positions
+	_transition_to_position_based_loading()
+
+func _transition_to_position_based_loading():
+	owdb.debug("ChunkManager: Transitioning from load-all to position-based loading")
+	
+	# Store currently loaded chunks
+	var previously_loaded_chunks = {}
+	for size_cat in loaded_chunks:
+		previously_loaded_chunks[size_cat] = loaded_chunks[size_cat].duplicate()
+	
+	# Clear all current chunk requirements
+	chunk_requirements.clear()
+	for position_id in position_required_chunks:
+		position_required_chunks[position_id] = {}
+	
+	# Recalculate requirements based on current positions
+	for position_id in position_registry:
+		var pos_node = position_registry[position_id]
+		if pos_node and is_instance_valid(pos_node):
+			_calculate_position_requirements(position_id, pos_node.global_position)
+	
+	# Unload chunks that are no longer required
+	_unload_unrequired_chunks(previously_loaded_chunks)
+	
+	owdb.debug("ChunkManager: Transition complete - now using position-based loading")
+
+func _calculate_position_requirements(position_id: String, position: Vector3):
+	var sizes = OpenWorldDatabase.Size.values()
+	sizes.reverse()
+	
+	var new_required_chunks = {}
+	for size in sizes:
+		if size == OpenWorldDatabase.Size.ALWAYS_LOADED or size >= owdb._chunk_sizes.size():
+			new_required_chunks[size] = {OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS: true}
+			continue
+		new_required_chunks[size] = _calculate_required_chunks_for_size(size, position)
+	
+	# Add requirements for this position
+	for size in new_required_chunks:
+		for chunk_pos in new_required_chunks[size]:
+			_add_chunk_requirement(size, chunk_pos, position_id)
+	
+	position_required_chunks[position_id] = new_required_chunks
+
+func _unload_unrequired_chunks(previously_loaded_chunks: Dictionary):
+	var chunks_to_unload = 0
+	
+	for size_cat in previously_loaded_chunks:
+		if size_cat == OpenWorldDatabase.Size.ALWAYS_LOADED:
+			continue
+			
+		for chunk_pos in previously_loaded_chunks[size_cat]:
+			var chunk_key = NodeUtils.get_chunk_key(size_cat, chunk_pos)
+			
+			# If this chunk is no longer required, unload it
+			if not chunk_requirements.has(chunk_key):
+				_queue_chunk_operation(size_cat, chunk_pos, "unload")
+				chunks_to_unload += 1
+	
+	owdb.debug("ChunkManager: Queued ", chunks_to_unload, " chunks for unloading (transition to position-based)")
+	
+	# Ensure batch processing if we have operations
+	if chunks_to_unload > 0 and _autonomous_chunk_management:
+		if not batch_callback_registered:
+			owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
+			batch_callback_registered = true
+
+func _load_all_available_chunks():
+	if not owdb.chunk_lookup:
+		return
+	
+	var chunks_to_load = 0
+	
+	# Load all chunks that exist in the database
+	for size_cat in owdb.chunk_lookup:
+		for chunk_pos in owdb.chunk_lookup[size_cat]:
+			if not is_chunk_loaded(size_cat, chunk_pos):
+				_queue_chunk_operation(size_cat, chunk_pos, "load")
+				chunks_to_load += 1
+	
+	owdb.debug("ChunkManager: Queued ", chunks_to_load, " chunks for loading (load all mode)")
+	
+	# Process batch immediately if batch processing is enabled
+	if owdb.batch_processor and chunks_to_load > 0:
+		if not batch_callback_registered:
+			owdb.batch_processor.add_batch_complete_callback(_on_batch_complete)
+			batch_callback_registered = true
 
 func force_refresh_all_positions():
 	for position_id in position_registry:
@@ -67,10 +167,12 @@ func unregister_position(position_id: String):
 	if not position_registry.has(position_id):
 		return
 	
-	var old_required_chunks = position_required_chunks.get(position_id, {})
-	for size in old_required_chunks:
-		for chunk_pos in old_required_chunks[size]:
-			_remove_chunk_requirement(size, chunk_pos, position_id)
+	# Only remove chunk requirements if not in load_all_chunks_mode
+	if not _load_all_chunks_mode:
+		var old_required_chunks = position_required_chunks.get(position_id, {})
+		for size in old_required_chunks:
+			for chunk_pos in old_required_chunks[size]:
+				_remove_chunk_requirement(size, chunk_pos, position_id)
 	
 	position_registry.erase(position_id)
 	position_required_chunks.erase(position_id)
@@ -93,6 +195,10 @@ func update_position_chunks(position_id: String, position: Vector3):
 		return
 	
 	_ensure_always_loaded_chunk()
+	
+	# In load_all_chunks_mode, don't manage chunks based on position
+	if _load_all_chunks_mode:
+		return
 	
 	var sizes = OpenWorldDatabase.Size.values()
 	sizes.reverse()
@@ -152,7 +258,7 @@ func _add_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i, p
 	
 	if not chunk_requirements.has(chunk_key):
 		chunk_requirements[chunk_key] = {}
-		if _autonomous_chunk_management:
+		if _autonomous_chunk_management and not _load_all_chunks_mode:
 			_queue_chunk_operation(size, chunk_pos, "load")
 	
 	chunk_requirements[chunk_key][position_id] = true
@@ -167,7 +273,8 @@ func _remove_chunk_requirement(size: OpenWorldDatabase.Size, chunk_pos: Vector2i
 	
 	if chunk_requirements[chunk_key].is_empty():
 		chunk_requirements.erase(chunk_key)
-		if size != OpenWorldDatabase.Size.ALWAYS_LOADED and _autonomous_chunk_management:
+		# In load_all_chunks_mode, never unload chunks
+		if size != OpenWorldDatabase.Size.ALWAYS_LOADED and _autonomous_chunk_management and not _load_all_chunks_mode:
 			_queue_chunk_operation(size, chunk_pos, "unload")
 
 func _on_batch_complete():
@@ -308,5 +415,6 @@ func get_chunk_requirement_info() -> Dictionary:
 		"total_chunks_required": total_chunks_required,
 		"chunks_loaded": chunks_loaded,
 		"autonomous_management": _autonomous_chunk_management,
-		"network_mode": _current_network_mode
+		"network_mode": _current_network_mode,
+		"load_all_chunks_mode": _load_all_chunks_mode
 	}

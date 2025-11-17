@@ -173,25 +173,29 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
 		return
-	
+
 	if owdb.loaded_nodes_by_uid.has(uid):
 		return
 		
 	var node_info = owdb.node_monitor.stored_nodes[uid]
-	var new_node = _create_node(node_info.scene)
 	
-	if not new_node:
-		_debug("Failed to create node for UID: " + uid)
-		return
-	
-	new_node.set_meta("_owd_uid", uid)
-	new_node.name = uid
-	
+	# Handle parent loading logic
 	var parent_node_target = owdb
 	if node_info.parent_uid != "":
 		var parent = owdb.loaded_nodes_by_uid.get(node_info.parent_uid)
 		if parent:
 			parent_node_target = parent
+		else:
+			parent_node_target = _ensure_parent_loaded(node_info.parent_uid)
+	
+	var new_node = _create_node(node_info.scene)
+	
+	if not new_node:
+		_debug("Failed to create node for UID: " + uid)
+		return
+
+	new_node.set_meta("_owd_uid", uid)
+	new_node.name = uid
 	
 	owdb.node_monitor.apply_stored_properties(new_node, node_info.properties)
 	
@@ -207,6 +211,28 @@ func _immediate_load_node(uid: String):
 	owdb._setup_listeners(new_node)
 	
 	_debug("NODE LOADED: " + uid + " at " + str(node_info.position))
+
+func _ensure_parent_loaded(parent_uid: String) -> Node:
+	# Check if parent is already loaded
+	var existing_parent = owdb.loaded_nodes_by_uid.get(parent_uid)
+	if existing_parent:
+		return existing_parent
+	
+	# Check if parent exists in database
+	if not owdb.node_monitor.stored_nodes.has(parent_uid):
+		return owdb
+	
+	var parent_info = owdb.node_monitor.stored_nodes[parent_uid]
+	var parent_size_cat = owdb.get_size_category(parent_info.size)
+	var parent_chunk_pos = NodeUtils.get_chunk_position(parent_info.position, owdb.chunk_sizes[parent_size_cat]) if parent_size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
+	
+	# Check if parent's chunk should be loaded
+	if owdb.chunk_manager.is_chunk_loaded(parent_size_cat, parent_chunk_pos):
+		# Recursively load the parent
+		_immediate_load_node(parent_uid)
+		return owdb.loaded_nodes_by_uid.get(parent_uid, owdb)
+	else:
+		return owdb
 
 func _immediate_unload_node(uid: String):
 	if not owdb:

@@ -144,6 +144,8 @@ func _get_top_level_uids() -> Array:
 	
 	return top_level_uids
 
+# In Database.gd, replace the _load_database_from_path method:
+
 func _load_database_from_path(db_path: String):
 	var file = FileAccess.open(db_path, FileAccess.READ)
 	if not file:
@@ -160,7 +162,9 @@ func _load_database_from_path(db_path: String):
 	var in_resources_section = false
 	
 	while not file.eof_reached():
-		var line = file.get_line().strip_edges()
+		var original_line = file.get_line()
+		var line = original_line.strip_edges()
+		
 		if line == "":
 			continue
 		
@@ -177,21 +181,25 @@ func _load_database_from_path(db_path: String):
 				resources_loaded += 1
 			continue
 		
+		# Calculate depth on the ORIGINAL line (before stripping)
 		var depth = 0
-		while depth < line.length() and line[depth] == "\t":
+		while depth < original_line.length() and original_line[depth] == "\t":
 			depth += 1
 		
-		var info = _parse_line(line.strip_edges())
+		var info = _parse_line(line)
 		if not info:
 			continue
 		
+		# Pop stack until we find the correct parent level
 		while depth_stack.size() > 0 and depth <= depth_stack[-1]:
 			node_stack.pop_back()
 			depth_stack.pop_back()
 		
+		# Set parent UID if we have a parent in the stack
 		if node_stack.size() > 0:
 			info.parent_uid = node_stack[-1]
 		
+		# Add current node to stack
 		node_stack.append(info.uid)
 		depth_stack.append(depth)
 		
@@ -205,7 +213,7 @@ func _load_database_from_path(db_path: String):
 		load_msg += " (Resources: " + str(resources_loaded) + ")"
 	
 	owdb.debug(load_msg)
-
+	
 func _load_single_resource(resource_id: String, resource_json: String):
 	var json = JSON.new()
 	if json.parse(resource_json) == OK:

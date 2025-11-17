@@ -23,6 +23,7 @@ const SKIP_PROPERTIES = [
 var _chunk_sizes: Array[float] = [8.0, 16.0, 64.0]
 var _threshold_ratio: float = 0.25
 var _chunk_load_range: int = 3
+var _load_all_chunks: bool = false
 
 @export var chunk_sizes: Array[float] = [8.0, 16.0, 64.0]:
 	set(value):
@@ -65,6 +66,15 @@ var _chunk_load_range: int = 3
 
 @export_group("Editor")
 @export var follow_editor_camera: bool = true
+@export var load_all_chunks: bool = false:
+	set(value):
+		if _load_all_chunks != value and Engine.is_editor_hint() and is_inside_tree():
+			_load_all_chunks = value
+			_handle_load_all_chunks_change(value)
+		else:
+			_load_all_chunks = value
+	get:
+		return _load_all_chunks
 
 @export_group("Debug")
 @export var debug_enabled: bool = false
@@ -95,6 +105,17 @@ func _arrays_equal(a: Array, b: Array) -> bool:
 			return false
 	return true
 
+func _handle_load_all_chunks_change(enabled: bool):
+	debug("Editor 'load_all_chunks' changed to: ", enabled)
+	
+	if not chunk_manager:
+		return
+	
+	if enabled:
+		chunk_manager.enable_load_all_chunks_mode()
+	else:
+		chunk_manager.disable_load_all_chunks_mode()
+
 func _handle_editor_property_change(property_name: String):
 	debug("Editor property '" + property_name + "' changed - performing complete reset with batch processing FORCED OFF")
 	
@@ -124,11 +145,19 @@ func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
 	if Engine.is_editor_hint():
 		_last_follow_state = follow_editor_camera
 		_update_editor_camera_following()
+		
+		# Restore load_all_chunks state after reset
+		if _load_all_chunks:
+			call_deferred("_restore_load_all_chunks_state")
 	
 	if not Engine.is_editor_hint():
 		call_deferred("_register_with_syncer")
 	
 	debug("Complete reset finished - batch processing restored to: " + str(batch_processing_enabled))
+
+func _restore_load_all_chunks_state():
+	if chunk_manager and _load_all_chunks:
+		chunk_manager.enable_load_all_chunks_mode()
 
 func _reset_with_batch_disabled():
 	is_loading = true
@@ -165,7 +194,6 @@ func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 		else:
 			print("0: ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
 
-
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		get_tree().auto_accept_quit = false
@@ -185,6 +213,10 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		_last_follow_state = follow_editor_camera
 		call_deferred("_update_editor_camera_following")
+		
+		# Apply load_all_chunks setting after everything is loaded
+		if _load_all_chunks:
+			call_deferred("_restore_load_all_chunks_state")
 
 func _process(_delta):
 	if Engine.is_editor_hint():
@@ -454,6 +486,7 @@ func debugAll():
 	print(multiplayer.get_unique_id(), ": Total nodes in database: ", get_total_database_nodes())
 	print(multiplayer.get_unique_id(), ": Active OWDBPosition nodes: ", get_active_position_count())
 	print(multiplayer.get_unique_id(), ": Follow Editor Camera: ", follow_editor_camera)
+	print(multiplayer.get_unique_id(), ": Load All Chunks: ", _load_all_chunks)
 	print(multiplayer.get_unique_id(), ": Editor Camera Position Node: ", _editor_camera_position != null)
 	if _editor_camera:
 		print(multiplayer.get_unique_id(), ": Editor Camera Position: ", _editor_camera.global_position)
