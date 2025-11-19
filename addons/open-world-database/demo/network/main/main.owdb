@@ -1,6 +1,8 @@
+MeshInstance3D6|"MeshInstance3D"|5.04324960708618,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<TorusMesh#-9223369333122438076>","skeleton":"../.."}
 MeshInstance3D|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|2.0,2.0,2.0|1.99999964237213|{"mesh":"<SphereMesh#-9223369272506357521>"}
 MeshInstance3D7|"MeshInstance3D"|1.66062498092651,0.0,1.94581174850464|0.0,0.0,0.0|1.0,1.0,1.0|1.99999988079071|{"mesh":"<CapsuleMesh#-9223367765174164248>"}
-MeshInstance3D6|"MeshInstance3D"|5.04324960708618,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<TorusMesh#-9223369333122438076>","skeleton":"../.."}
+MeshInstance3D10|"MeshInstance3D"|2.19898462295532,0.0,5.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<TorusMesh#-9223369333122438076>","skeleton":"../.."}
+MeshInstance3D9|"MeshInstance3D"|5.04324960708618,0.0,5.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<TorusMesh#-9223369333122438076>","skeleton":"../.."}
 MeshInstance3D4|"MeshInstance3D"|3.20339393615723,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<PrismMesh#-9223368673542968180>","skeleton":"../.."}
 MeshInstance3D8|"MeshInstance3D"|1.0,0.0,-2.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<PrismMesh#-9223368673542968180>","skeleton":"../.."}
 MeshInstance3D2|"MeshInstance3D"|1.73107135295868,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.00000011920929|{"mesh":"<BoxMesh#-9223369270979630184>","skeleton":"../.."}

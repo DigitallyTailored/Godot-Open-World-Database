@@ -71,18 +71,10 @@ func _add_player(id: int) -> void:
 	# Setup sync node - need to think about a way to not have to do this
 	var sync_node = player.find_child("OWDBSync")
 	sync_node.peer_id = id
-	"""
-	sync_node.owdb = owdb
-	
-	var position_node = player.find_child("OWDBPosition")
-	position_node.sync_node = sync_node
-	position_node.owdb = owdb
-	"""
+
 	# Add player to the scene FIRST - this triggers _ready() which handles registration
 	add_child(player)
-	
-	# REMOVE the manual refresh_peer_registration() call - let _ready() handle it
-	
+		
 	# Call handle_peer_connected AFTER the player is in the tree
 	owdb.syncer.handle_peer_connected(id)
 	
