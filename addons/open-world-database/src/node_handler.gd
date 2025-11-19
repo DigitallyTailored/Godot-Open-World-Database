@@ -142,11 +142,16 @@ func _handle_new_node_positioning(node: Node):
 	
 	owdb.debug("NODE ADDED: " + node.name + " at position: " + str(node_position) + " - " + str(owdb.get_total_database_nodes()) + " total nodes")
 	
+	# Skip chunk checks for network-spawned nodes in PEER mode
+	if node.has_meta("_network_spawned") and owdb.is_network_peer():
+		owdb.debug("NETWORK-SPAWNED node - skipping chunk check: ", node.name)
+		return
+	
 	if not owdb.chunk_manager.is_chunk_loaded(size_cat, chunk_pos):
 		owdb.debug("NODE ADDED TO UNLOADED CHUNK - UNLOADING: ", node.name)
 		owdb.call_deferred("_unload_node_not_in_chunk", node)
 		return
-
+		
 func handle_node_rename(node: Node) -> bool:
 	var old_uid = NodeUtils.get_valid_node_uid(node)
 	if old_uid == "" or old_uid == node.name:

@@ -1,9 +1,4 @@
 # src/OpenWorldDatabase.gd
-# Main open world database system managing chunk-based node loading and networking
-# Coordinates all subsystems: ChunkManager, NodeMonitor, BatchProcessor, Database, Syncer
-# Handles network mode switching (HOST/PEER/STANDALONE) and editor camera following
-# Input: Node tree changes, multiplayer events, property changes
-# Output: Chunk-based world streaming, database persistence, network coordination
 @tool
 extends Node
 class_name OpenWorldDatabase
@@ -231,23 +226,18 @@ func _ready() -> void:
 
 func _process(_delta):
 	if Engine.is_editor_hint():
-		# Check if follow state changed
 		if follow_editor_camera != _last_follow_state:
 			_last_follow_state = follow_editor_camera
 			_update_editor_camera_following()
 		
-		# Always ensure we have a camera position if we should
 		if follow_editor_camera and _is_current_edited_scene():
-			# Ensure camera position exists
 			if not _editor_camera_position or not is_instance_valid(_editor_camera_position):
 				_create_editor_camera_position()
 				if _editor_camera_position:
 					_editor_camera_position.force_update()
 			
-			# Update camera position
 			if _editor_camera_position:
 				_update_editor_camera_position()
-
 
 func _is_current_edited_scene() -> bool:
 	var edited_scene = EditorInterface.get_edited_scene_root()
@@ -303,10 +293,7 @@ func _update_editor_camera_position():
 	if _editor_camera_position and is_instance_valid(_editor_camera_position):
 		_editor_camera_position.global_position = editor_camera.global_position
 
-
-
 func _exit_tree():
-	# Always clean up on exit
 	_remove_editor_camera_position()
 	
 	if syncer and is_instance_valid(syncer):
@@ -314,7 +301,6 @@ func _exit_tree():
 		syncer.queue_free()
 		syncer = null
 		debug("OWDB unregistered and freed Syncer")
-
 
 func _setup_multiplayer_signals():
 	if not multiplayer:
@@ -556,6 +542,10 @@ func _unload_node_not_in_chunk(node: Node):
 	if uid != "":
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
+		
+		# Notify syncer that node is being unloaded
+		if syncer and is_instance_valid(syncer) and node.has_meta("_network_spawned"):
+			syncer.notify_node_unloaded(node.name)
 	
 	debug("NODE REMOVED (unloaded chunk): " + node.name + " - " + str(get_total_database_nodes()) + " total database nodes")
 	

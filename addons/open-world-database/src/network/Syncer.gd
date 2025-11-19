@@ -1,10 +1,4 @@
 # src/network/Syncer.gd
-# Core networking synchronization manager that handles multiplayer node visibility and state sync
-# Manages networked entity creation/deletion, property synchronization, and resource sharing between peers
-# Integrates with OWDB for chunk-based visibility culling and peer position tracking
-# Input: Node registrations, variable updates, peer connections
-# Output: RPC calls for node sync, visibility management, resource distribution
-@tool
 extends Node
 
 var _sync_nodes: Dictionary = {}
@@ -103,8 +97,8 @@ func _update_entity_visibility_from_owdb():
 		var all_entities_to_check = {}
 		
 		for node_name in _sync_nodes:
-			var sync_data = _sync_nodes[node_name]
-			if sync_data and is_instance_valid(sync_data.parent):
+			if _validate_sync_data(node_name):
+				var sync_data = _sync_nodes[node_name]
 				all_entities_to_check[node_name] = sync_data.parent
 		
 		for uid in owdb.loaded_nodes_by_uid:
@@ -146,8 +140,8 @@ func _update_single_peer_visibility(peer_id: int):
 	var all_entities_to_check = {}
 	
 	for node_name in _sync_nodes:
-		var sync_data = _sync_nodes[node_name]
-		if sync_data and is_instance_valid(sync_data.parent):
+		if _validate_sync_data(node_name):
+			var sync_data = _sync_nodes[node_name]
 			all_entities_to_check[node_name] = sync_data.parent
 	
 	for uid in owdb.loaded_nodes_by_uid:
@@ -230,6 +224,29 @@ func _process(_delta: float) -> void:
 		owdb.debug("owdb_registered: ", owdb != null)
 		owdb.debug("loaded_nodes: ", loaded_nodes.keys())
 
+func _validate_sync_data(node_name: String) -> bool:
+	"""Returns true if sync data exists and node is valid, false otherwise. Cleans up stale data."""
+	if not _sync_nodes.has(node_name):
+		return false
+	
+	var sync_data = _sync_nodes[node_name]
+	if not sync_data.parent or not is_instance_valid(sync_data.parent):
+		if owdb:
+			owdb.debug("Cleaning up stale sync data for: ", node_name)
+		_sync_nodes.erase(node_name)
+		loaded_nodes.erase(node_name)
+		return false
+	
+	return true
+
+func notify_node_unloaded(node_name: String):
+	"""Called when OWDB unloads a network-spawned node"""
+	if _sync_nodes.has(node_name):
+		_sync_nodes.erase(node_name)
+		loaded_nodes.erase(node_name)
+		if owdb:
+			owdb.debug("Cleaned up sync data for unloaded node: ", node_name)
+
 func is_node_registered(node: Node3D) -> bool:
 	return _sync_nodes.has(node.name)
 
@@ -295,7 +312,7 @@ func _remove_node_locally(node_name: String):
 	loaded_nodes.erase(node_name)
 
 func sync_variables(node_name: String, variables_in: Dictionary, force_send_to_all: bool = false, sender_peer_id: int = -1) -> void:
-	if not _sync_nodes.has(node_name):
+	if not _validate_sync_data(node_name):
 		return
 	
 	var sync_data = _sync_nodes[node_name]
@@ -369,7 +386,7 @@ func entity_peer_visible(peer_id: int, node_name: String, is_visible: bool) -> v
 	if is_visible and not _peer_nodes_observing[peer_id].has(node_name):
 		_peer_nodes_observing[peer_id].append(node_name)
 		
-		if _sync_nodes.has(node_name):
+		if _validate_sync_data(node_name):
 			var sync_data = _sync_nodes[node_name]
 			if peer_id == 1:
 				sync_data.parent.visible = true
@@ -389,7 +406,7 @@ func entity_peer_visible(peer_id: int, node_name: String, is_visible: bool) -> v
 		_peer_nodes_observing[peer_id].erase(node_name)
 		
 		if peer_id == 1:
-			if _sync_nodes.has(node_name):
+			if _validate_sync_data(node_name):
 				var sync_data = _sync_nodes[node_name]
 				sync_data.parent.visible = false
 		else:
@@ -403,6 +420,9 @@ func handle_client_connected_to_server() -> void:
 		return
 		
 	for node_name in _sync_nodes.keys():
+		if not _validate_sync_data(node_name):
+			continue
+			
 		var sync_data = _sync_nodes[node_name]
 		if sync_data.is_pre_existing:
 			if owdb:
@@ -546,7 +566,7 @@ func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
 
 @rpc("authority", "reliable")
 func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
-	if _sync_nodes.has(node_name):
+	if _validate_sync_data(node_name):
 		if owdb:
 			owdb.debug("taking control of existing node ", node_name)
 		var sync_data = _sync_nodes[node_name]
@@ -592,16 +612,20 @@ func remove_node(node_name: String) -> void:
 @rpc("any_peer", "reliable")
 func update_node(node_name: String, new_variables: Dictionary) -> void:
 	if multiplayer.is_server():
-		if _sync_nodes.has(node_name):
-			var sync_data = _sync_nodes[node_name]
-			for key in new_variables:
-				sync_data.synced_values[key] = new_variables[key]
-			var sender_id = multiplayer.get_remote_sender_id()
-			sync_variables(node_name, new_variables, false, sender_id)
+		if not _validate_sync_data(node_name):
+			return
+			
+		var sync_data = _sync_nodes[node_name]
+		for key in new_variables:
+			sync_data.synced_values[key] = new_variables[key]
+		var sender_id = multiplayer.get_remote_sender_id()
+		sync_variables(node_name, new_variables, false, sender_id)
 	else:
-		if _sync_nodes.has(node_name):
-			var sync_data = _sync_nodes[node_name]
-			_apply_variables_to_node(sync_data, new_variables)
+		if not _validate_sync_data(node_name):
+			return
+			
+		var sync_data = _sync_nodes[node_name]
+		_apply_variables_to_node(sync_data, new_variables)
 
 func handle_peer_connected(peer_id: int) -> void:
 	if multiplayer.is_server():
@@ -620,6 +644,9 @@ func handle_peer_disconnected(peer_id: int) -> void:
 		
 		var nodes_to_remove = []
 		for node_name in _sync_nodes:
+			if not _validate_sync_data(node_name):
+				continue
+				
 			var sync_data = _sync_nodes[node_name]
 			if sync_data.peer_id == peer_id:
 				nodes_to_remove.append(node_name)
@@ -628,7 +655,7 @@ func handle_peer_disconnected(peer_id: int) -> void:
 			_peer_nodes_observing.erase(peer_id)
 		
 		for node_name in nodes_to_remove:
-			if _sync_nodes.has(node_name):
+			if _validate_sync_data(node_name):
 				var sync_data = _sync_nodes[node_name]
 				unregister_node(sync_data.parent)
 			_remove_node_locally(node_name)

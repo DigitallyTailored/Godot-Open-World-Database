@@ -148,28 +148,50 @@ func _create_node(node_source: String) -> Node:
 	
 	return new_node
 
+# src/BatchProcessor.gd - Mark network-spawned nodes
 func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
+	_debug("=== _instantiate_node START ===")
+	_debug("  Source: " + node_source)
+	_debug("  Name: " + node_name)
+	_debug("  Parent path: " + parent_path)
+	
 	var parent_node_target = _get_parent_node_for_instantiation(parent_path)
 	if not parent_node_target:
+		_debug("ERROR: Parent node not found!")
 		return false
+	
+	_debug("  Parent found: " + parent_node_target.name)
 	
 	var new_node = _create_node(node_source)
 	if not new_node:
+		_debug("ERROR: Failed to create node!")
 		return false
+	
+	_debug("  Node created: " + str(new_node))
 	
 	new_node.name = node_name
 	
+	# Mark as network-spawned if we're a client
+	if owdb and owdb.is_network_peer():
+		new_node.set_meta("_network_spawned", true)
+		_debug("  Marked as network-spawned (PEER mode)")
+	
 	if callback.is_valid():
+		_debug("  Calling callback")
 		callback.call(new_node)
 	
+	_debug("  Adding child to parent")
 	parent_node_target.add_child(new_node)
 	
 	# Updated: Use local syncer instance
 	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
 		if not owdb.syncer.is_node_registered(new_node):
+			_debug("  Registering with syncer")
 			owdb.syncer.register_node(new_node, node_source, 1, {}, null)
 	
+	_debug("=== _instantiate_node COMPLETE ===")
 	return true
+
 
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
@@ -321,7 +343,12 @@ func queue_operation(type: OperationType, data: Dictionary, callback: Callable =
 	}
 	operation_order.append(operation_id)
 	
+	_debug("Operation queued: " + str(type) + " ID: " + operation_id)
+	_debug("  Batch timer running: " + str(batch_timer.time_left > 0))
+	_debug("  Batch processing enabled: " + str(batch_processing_enabled))
+	
 	if batch_processing_enabled and not batch_timer.time_left > 0:
+		_debug("Starting batch timer")
 		batch_timer.start()
 	
 	return operation_id
@@ -341,13 +368,21 @@ func unload_node(uid: String):
 			_immediate_unload_node(uid)
 
 func instantiate_scene(scene_path: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> String:
+	_debug("=== instantiate_scene called ===")
+	_debug("  Scene path: " + scene_path)
+	_debug("  Node name: " + node_name)
+	_debug("  Parent path: " + parent_path)
+	_debug("  Batch processing enabled: " + str(batch_processing_enabled))
+	
 	if batch_processing_enabled:
+		_debug("Queueing instantiate operation")
 		return queue_operation(OperationType.INSTANTIATE_SCENE, {
 			"scene_path": scene_path,
 			"node_name": node_name,
 			"parent_path": parent_path
 		}, callback)
 	else:
+		_debug("Processing instantiate immediately")
 		_instantiate_node(scene_path, node_name, parent_path, callback)
 		return node_name
 
