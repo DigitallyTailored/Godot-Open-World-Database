@@ -23,7 +23,7 @@ func _host_process(delta: float) -> void:
 	$OWDBSync.output_timed(["position"], 20) #send in intervals instead
 	if Time.get_ticks_msec() > next_update:
 		next_update = Time.get_ticks_msec() + 200
-		data["text"] = Syncer.nodes.random_string()
+		data["text"] = "%x" % randi()
 		$Label3D.text = data["text"]
 		$OWDBSync.output(["data"])
 

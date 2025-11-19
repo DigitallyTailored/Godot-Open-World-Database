@@ -21,7 +21,7 @@ func _host_process(delta: float) -> void:
 	
 	if Time.get_ticks_msec() > next_update:
 		next_update = Time.get_ticks_msec() + $OWDBSync.interval
-		game_data["text"] = Syncer.nodes.random_string()
+		game_data["text"] = "%x" % randi()
 		$Label3D.text = game_data["text"]
 		# Watch system automatically detects changes!
 

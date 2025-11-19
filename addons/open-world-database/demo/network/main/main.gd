@@ -26,7 +26,7 @@ func _on_host_pressed() -> void:
 	
 	# Add a player for the server (with OWDBPosition)
 	_add_player(1)
-	Syncer.handle_peer_connected(1)
+	owdb.syncer.handle_peer_connected(1)
 
 func _on_join_pressed() -> void:
 	# Connect to server
@@ -46,11 +46,11 @@ func _on_peer_connected(id: int) -> void:
 	# Server adds a player for the connected client
 	if multiplayer.is_server():
 		_add_player(id)
-		Syncer.handle_peer_connected(id)
+		owdb.syncer.handle_peer_connected(id)
 
 func _on_connected_to_server() -> void:
 	# Client connected to server - handle pre-existing sync nodes
-	Syncer.handle_client_connected_to_server()
+	owdb.syncer.handle_client_connected_to_server()
 
 func _add_player(id: int) -> void:
 	if not multiplayer.is_server():
@@ -79,18 +79,18 @@ func _add_player(id: int) -> void:
 	if owdb_position:
 		owdb_position.refresh_peer_registration()
 	
-	# Add player to the scene
-	$SyncNodes.add_child(player)
+	# Add player to the scene - it needs to be under owdb to access the network syncer
+	owdb.add_child(player)
 	
 	# Make player visible to appropriate peers
-	Syncer.entity_peer_visible(id, node_name, true)
+	owdb.syncer.entity_peer_visible(id, node_name, true)
 	
 	# Make all players visible to each other
-	for peer_id in Syncer.get_peer_nodes_observing().keys():
+	for peer_id in owdb.syncer.get_peer_nodes_observing().keys():
 		if peer_id != id:
-			Syncer.entity_peer_visible(peer_id, node_name, true)
-			Syncer.entity_peer_visible(id, str(peer_id), true)
+			owdb.syncer.entity_peer_visible(peer_id, node_name, true)
+			owdb.syncer.entity_peer_visible(id, str(peer_id), true)
 
 func _on_peer_disconnected(id: int) -> void:
 	if multiplayer.is_server():
-		Syncer.handle_peer_disconnected(id)
+		owdb.syncer.handle_peer_disconnected(id)

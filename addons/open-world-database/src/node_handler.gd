@@ -9,6 +9,7 @@ extends RefCounted
 class_name NodeHandler
 
 var owdb: OpenWorldDatabase
+var _pending_nodes: Dictionary = {}  # Tracks nodes waiting for owner to be set
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
@@ -17,7 +18,17 @@ func handle_child_entered_tree(node: Node):
 	if not is_instance_valid(node) or not owdb.is_ancestor_of(node):
 		return
 
-	if node.owner != owdb.owner:
+	# In editor, nodes might not have owner set immediately when dropped
+	# Store them and retry after a frame
+	if Engine.is_editor_hint() and node.owner == null:
+		var node_id = node.get_instance_id()
+		if not _pending_nodes.has(node_id):
+			_pending_nodes[node_id] = 0  # Retry counter
+			owdb.get_tree().process_frame.connect(_retry_handle_node.bind(node_id, node), CONNECT_ONE_SHOT)
+		return
+	
+	# Skip nodes that don't belong to our scene (but null owner is OK during loading)
+	if node.owner != owdb.owner and node.owner != null:
 		return
 		
 	if node.has_meta("_owd_uid"):
@@ -49,6 +60,28 @@ func handle_child_entered_tree(node: Node):
 		return
 	
 	_handle_new_node(node)
+
+func _retry_handle_node(node_id: int, node: Node):
+	if not is_instance_valid(node) or not node.is_inside_tree():
+		_pending_nodes.erase(node_id)
+		return
+	
+	var retry_count = _pending_nodes.get(node_id, 0)
+	
+	# If owner is now set, process the node
+	if node.owner != null:
+		_pending_nodes.erase(node_id)
+		handle_child_entered_tree(node)
+		return
+	
+	# Retry up to 10 times (10 frames)
+	if retry_count < 10:
+		_pending_nodes[node_id] = retry_count + 1
+		owdb.get_tree().process_frame.connect(_retry_handle_node.bind(node_id, node), CONNECT_ONE_SHOT)
+	else:
+		# Give up after 10 retries
+		_pending_nodes.erase(node_id)
+		owdb.debug("WARNING: Node failed to get owner after 10 retries: ", node.name)
 
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:
@@ -139,7 +172,6 @@ func handle_node_rename(node: Node) -> bool:
 	
 	return true
 
-# NEW METHOD: Handle node type changes
 func handle_node_type_change(node: Node) -> bool:
 	var uid = NodeUtils.get_valid_node_uid(node)
 	if uid == "" or not owdb.node_monitor.stored_nodes.has(uid):
