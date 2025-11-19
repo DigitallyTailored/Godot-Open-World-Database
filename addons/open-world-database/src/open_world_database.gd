@@ -95,7 +95,6 @@ var _multiplayer_connected: bool = false
 
 var _editor_camera_position: OWDBPosition = null
 var _last_follow_state: bool = false
-var _editor_camera: Camera3D = null
 
 func _arrays_equal(a: Array, b: Array) -> bool:
 	if a.size() != b.size():
@@ -146,7 +145,6 @@ func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
 		_last_follow_state = follow_editor_camera
 		_update_editor_camera_following()
 		
-		# Restore load_all_chunks state after reset
 		if _load_all_chunks:
 			call_deferred("_restore_load_all_chunks_state")
 	
@@ -214,7 +212,6 @@ func _ready() -> void:
 		_last_follow_state = follow_editor_camera
 		call_deferred("_update_editor_camera_following")
 		
-		# Apply load_all_chunks setting after everything is loaded
 		if _load_all_chunks:
 			call_deferred("_restore_load_all_chunks_state")
 
@@ -223,6 +220,24 @@ func _process(_delta):
 		if follow_editor_camera != _last_follow_state:
 			_last_follow_state = follow_editor_camera
 			_update_editor_camera_following()
+		
+		# Update editor camera position if following is enabled and this is the current edited scene
+		if follow_editor_camera and _editor_camera_position and _is_current_edited_scene():
+			_update_editor_camera_position()
+
+func _is_current_edited_scene() -> bool:
+	var edited_scene = EditorInterface.get_edited_scene_root()
+	if not edited_scene:
+		return false
+	
+	# Check if the owdb is part of the currently edited scene
+	var current_scene = self
+	while current_scene.get_parent():
+		current_scene = current_scene.get_parent()
+		if current_scene == edited_scene:
+			return true
+		
+	return false
 
 func _update_editor_camera_following():
 	if follow_editor_camera and not _editor_camera_position:
@@ -244,25 +259,26 @@ func _create_editor_camera_position():
 	if _editor_camera_position:
 		return
 	
-	_editor_camera = _get_editor_camera()
-	if not _editor_camera:
-		debug("Could not find editor camera")
-		return
-	
 	_editor_camera_position = OWDBPosition.new()
 	_editor_camera_position.name = "EditorCameraPosition"
 	
-	_editor_camera.add_child(_editor_camera_position)
+	# Add to the OWDB scene instead of the editor camera
+	add_child(_editor_camera_position)
 	
-	_editor_camera_position.position = Vector3.ZERO
+	debug("Created editor camera OWDBPosition node in scene")
+
+func _update_editor_camera_position():
+	var editor_camera = _get_editor_camera()
+	if not editor_camera:
+		return
 	
-	debug("Created editor camera OWDBPosition node under editor camera")
+	if _editor_camera_position and is_instance_valid(_editor_camera_position):
+		_editor_camera_position.global_position = editor_camera.global_position
 
 func _remove_editor_camera_position():
 	if _editor_camera_position and is_instance_valid(_editor_camera_position):
 		_editor_camera_position.queue_free()
 		_editor_camera_position = null
-		_editor_camera = null
 		debug("Removed editor camera OWDBPosition node")
 
 func _register_with_syncer():
@@ -488,8 +504,12 @@ func debugAll():
 	print(multiplayer.get_unique_id(), ": Follow Editor Camera: ", follow_editor_camera)
 	print(multiplayer.get_unique_id(), ": Load All Chunks: ", _load_all_chunks)
 	print(multiplayer.get_unique_id(), ": Editor Camera Position Node: ", _editor_camera_position != null)
-	if _editor_camera:
-		print(multiplayer.get_unique_id(), ": Editor Camera Position: ", _editor_camera.global_position)
+	print(multiplayer.get_unique_id(), ": Is Current Edited Scene: ", _is_current_edited_scene())
+	if _editor_camera_position:
+		print(multiplayer.get_unique_id(), ": Editor Position Node Position: ", _editor_camera_position.global_position)
+	var editor_camera = _get_editor_camera()
+	if editor_camera:
+		print(multiplayer.get_unique_id(), ": Editor Camera Position: ", editor_camera.global_position)
 	var chunk_info = chunk_manager.get_chunk_requirement_info()
 	print(multiplayer.get_unique_id(), ": Chunks required: ", chunk_info.total_chunks_required)
 	print(multiplayer.get_unique_id(), ": Chunks loaded: ", chunk_info.chunks_loaded)
