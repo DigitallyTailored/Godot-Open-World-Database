@@ -1,9 +1,4 @@
 # src/OWDBPosition.gd
-# Position tracking component that registers with chunk management for visibility culling
-# Monitors global position changes and triggers chunk loading/unloading as needed
-# Integrates with Syncer for peer position tracking in multiplayer scenarios  
-# Input: Position changes via _process, peer ID from sync components
-# Output: Position updates to ChunkManager, peer registrations with Syncer
 @tool
 extends Node3D
 class_name OWDBPosition
@@ -66,11 +61,13 @@ func _update_peer_registration():
 		_cached_peer_id = current_peer_id
 
 func _register_with_syncer(peer_id: int):
-	Syncer.register_peer_position(peer_id, self)
+	if owdb and owdb.syncer:
+		owdb.syncer.register_peer_position(peer_id, self)
 
 func _unregister_from_syncer(peer_id: int = -1):
-	var id_to_unregister = peer_id if peer_id != -1 else _cached_peer_id
-	Syncer.unregister_peer_position(id_to_unregister)
+	if owdb and owdb.syncer:
+		var id_to_unregister = peer_id if peer_id != -1 else _cached_peer_id
+		owdb.syncer.unregister_peer_position(id_to_unregister)
 
 func _process(_delta):
 	if not owdb or owdb.is_loading or position_id == "":

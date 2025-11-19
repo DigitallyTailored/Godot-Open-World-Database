@@ -1,9 +1,4 @@
 # src/network/OWDBSync.gd
-# Individual node synchronization component that watches and syncs specific properties
-# Handles variable watching, throttled updates, and bidirectional sync communication
-# Manages transform properties (position, rotation, scale) with optimized getters/setters
-# Input: Property changes, network variable updates
-# Output: Sync data to Syncer, property applications to parent node
 extends Node
 class_name OWDBSync
 
@@ -30,6 +25,26 @@ var property_setters := {}
 
 var throttled_last_send := {}
 
+var _owdb: OpenWorldDatabase = null
+
+func _get_syncer():
+	"""Get the Syncer instance from parent OWDB"""
+	if not _owdb:
+		_owdb = _find_owdb()
+	
+	if _owdb and _owdb.syncer and is_instance_valid(_owdb.syncer):
+		return _owdb.syncer
+	
+	return null
+
+func _find_owdb() -> OpenWorldDatabase:
+	var current = get_parent()
+	while current:
+		if current is OpenWorldDatabase:
+			return current
+		current = current.get_parent()
+	return null
+
 func _ready():
 	parent = get_parent()
 	parent_scene = parent.scene_file_path
@@ -38,16 +53,17 @@ func _ready():
 	parent_path = _get_parent_path()
 	is_pre_existing = _check_if_pre_existing()
 	
-	Syncer.register_node(parent, parent_scene, peer_id, synced_values, self)
+	var syncer = _get_syncer()
+	if syncer:
+		syncer.register_node(parent, parent_scene, peer_id, synced_values, self)
 		
-	if !parent.has_method("_host_process"):
+	if not parent.has_method("_host_process"):
 		set_process(false)
-	if !parent.has_method("_host_physics_process"):
+	if not parent.has_method("_host_physics_process"):
 		set_physics_process(false)
 	
 	if not autowatch_parent_variables.is_empty():
 		set_interval(autowatch_interval_ms)
-		
 		watch(autowatch_parent_variables)
 
 func _build_property_cache():
@@ -179,19 +195,27 @@ func _initialize_previous_values() -> void:
 				previous_values[var_name] = current_value
 
 func _convert_properties_to_short_keys(data: Dictionary) -> Dictionary:
+	var syncer = _get_syncer()
+	if not syncer:
+		return data
+	
 	var converted = {}
 	for key in data:
-		if Syncer.transform_mappings.has(key):
-			converted[Syncer.transform_mappings[key]] = data[key]
+		if syncer.transform_mappings.has(key):
+			converted[syncer.transform_mappings[key]] = data[key]
 		else:
 			converted[key] = data[key]
 	return converted
 
 func _convert_short_keys_to_properties(data: Dictionary) -> Dictionary:
+	var syncer = _get_syncer()
+	if not syncer:
+		return data
+	
 	var converted = {}
 	for key in data:
-		if Syncer.reverse_mappings.has(key):
-			converted[Syncer.reverse_mappings[key]] = data[key]
+		if syncer.reverse_mappings.has(key):
+			converted[syncer.reverse_mappings[key]] = data[key]
 		else:
 			converted[key] = data[key]
 	return converted
@@ -244,7 +268,12 @@ func _check_watched_variables() -> void:
 func _check_if_pre_existing() -> bool:
 	if not multiplayer or not multiplayer.has_multiplayer_peer():
 		return true
-	return not Syncer.loaded_nodes.has(parent_name)
+	
+	var syncer = _get_syncer()
+	if not syncer:
+		return true
+	
+	return not syncer.loaded_nodes.has(parent_name)
 
 func _get_parent_path() -> String:
 	var current_parent = parent.get_parent()
@@ -264,6 +293,10 @@ func is_this_peer() -> bool:
 	return peer_id == multiplayer.get_unique_id()
 
 func output(variables_in) -> void:
+	var syncer = _get_syncer()
+	if not syncer:
+		return
+	
 	var sync_data = {}
 	
 	if variables_in is Array:
@@ -279,7 +312,7 @@ func output(variables_in) -> void:
 			synced_values[key] = variables_in[key]
 	
 	if not sync_data.is_empty():
-		Syncer.sync_variables(parent_name, sync_data, false)
+		syncer.sync_variables(parent_name, sync_data, false)
 
 func output_timed(variables_in, custom_interval: int = -1) -> void:
 	var interval_to_use = custom_interval if custom_interval > 0 else interval

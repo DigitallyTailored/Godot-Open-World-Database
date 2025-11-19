@@ -164,9 +164,10 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	
 	parent_node_target.add_child(new_node)
 	
-	if not Engine.is_editor_hint() and Syncer and (Syncer.has_method("is_placeholder") and not Syncer.is_placeholder()):
-		if not Syncer.is_node_registered(new_node):
-			Syncer.register_node(new_node, node_source, 1, {}, null)
+	# Updated: Use local syncer instance
+	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
+		if not owdb.syncer.is_node_registered(new_node):
+			owdb.syncer.register_node(new_node, node_source, 1, {}, null)
 	
 	return true
 

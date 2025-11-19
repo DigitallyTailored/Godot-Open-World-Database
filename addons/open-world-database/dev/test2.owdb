@@ -1,0 +1,3 @@
+MeshInstance3D2|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.99999988079071|{"mesh":"<CapsuleMesh#-9223367728515930157>"}
+RESOURCES
+<CapsuleMesh#-9223367728515930157>:{"content_hash":"5299467a953ec5df5a2feb7d6012f1e20feee401742adea27f5fddceb368f5f5","file_path":"","original_id":"-9223367728515930157","properties":{},"type":"CapsuleMesh"}

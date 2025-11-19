@@ -1,6 +1,6 @@
 # src/OpenWorldDatabase.gd
 # Main open world database system managing chunk-based node loading and networking
-# Coordinates all subsystems: ChunkManager, NodeMonitor, BatchProcessor, Database
+# Coordinates all subsystems: ChunkManager, NodeMonitor, BatchProcessor, Database, Syncer
 # Handles network mode switching (HOST/PEER/STANDALONE) and editor camera following
 # Input: Node tree changes, multiplayer events, property changes
 # Output: Chunk-based world streaming, database persistence, network coordination
@@ -87,6 +87,7 @@ var chunk_manager: ChunkManager
 var node_monitor: NodeMonitor
 var node_handler: NodeHandler
 var batch_processor: BatchProcessor
+var syncer: Node = null
 var is_loading: bool = false
 var nodes_being_unloaded: Dictionary = {}
 
@@ -148,9 +149,6 @@ func _complete_reset_with_batch_disabled(original_batch_enabled: bool):
 		if _load_all_chunks:
 			call_deferred("_restore_load_all_chunks_state")
 	
-	if not Engine.is_editor_hint():
-		call_deferred("_register_with_syncer")
-	
 	debug("Complete reset finished - batch processing restored to: " + str(batch_processing_enabled))
 
 func _restore_load_all_chunks_state():
@@ -173,6 +171,7 @@ func _reset_with_batch_disabled():
 	batch_processor.batch_interval_ms = batch_interval_ms
 	batch_processor.batch_processing_enabled = false
 	
+	_setup_syncer()
 	_setup_listeners(self)
 	batch_processor.setup()
 	
@@ -184,13 +183,31 @@ func get_size_thresholds() -> Array[float]:
 	for chunk_size in _chunk_sizes:
 		thresholds.append(chunk_size * _threshold_ratio)
 	return thresholds
-	
+
 func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 	if debug_enabled:
 		if multiplayer:
 			print(multiplayer.get_unique_id(),": ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
 		else:
 			print("0: ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
+
+func _setup_syncer():
+	if syncer and is_instance_valid(syncer):
+		syncer.unregister_owdb()
+		syncer.queue_free()
+	
+	var syncer_script = load("res://addons/open-world-database/src/network/Syncer.gd")
+	if not syncer_script:
+		push_error("OWDB: Could not load Syncer script")
+		return
+	
+	syncer = Node.new()
+	syncer.set_script(syncer_script)
+	syncer.name = "Syncer"
+	add_child(syncer)
+	
+	syncer.register_owdb(self)
+	debug("Created local Syncer instance")
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -205,9 +222,6 @@ func _ready() -> void:
 	
 	_update_network_mode()
 	
-	if not Engine.is_editor_hint():
-		call_deferred("_register_with_syncer")
-	
 	if Engine.is_editor_hint():
 		_last_follow_state = follow_editor_camera
 		call_deferred("_update_editor_camera_following")
@@ -217,20 +231,29 @@ func _ready() -> void:
 
 func _process(_delta):
 	if Engine.is_editor_hint():
+		# Check if follow state changed
 		if follow_editor_camera != _last_follow_state:
 			_last_follow_state = follow_editor_camera
 			_update_editor_camera_following()
 		
-		# Update editor camera position if following is enabled and this is the current edited scene
-		if follow_editor_camera and _editor_camera_position and _is_current_edited_scene():
-			_update_editor_camera_position()
+		# Always ensure we have a camera position if we should
+		if follow_editor_camera and _is_current_edited_scene():
+			# Ensure camera position exists
+			if not _editor_camera_position or not is_instance_valid(_editor_camera_position):
+				_create_editor_camera_position()
+				if _editor_camera_position:
+					_editor_camera_position.force_update()
+			
+			# Update camera position
+			if _editor_camera_position:
+				_update_editor_camera_position()
+
 
 func _is_current_edited_scene() -> bool:
 	var edited_scene = EditorInterface.get_edited_scene_root()
 	if not edited_scene:
 		return false
 	
-	# Check if the owdb is part of the currently edited scene
 	var current_scene = self
 	while current_scene.get_parent():
 		current_scene = current_scene.get_parent()
@@ -256,16 +279,21 @@ func _get_editor_camera() -> Camera3D:
 	return null
 
 func _create_editor_camera_position():
-	if _editor_camera_position:
+	if _editor_camera_position and is_instance_valid(_editor_camera_position):
 		return
 	
 	_editor_camera_position = OWDBPosition.new()
 	_editor_camera_position.name = "EditorCameraPosition"
 	
-	# Add to the OWDB scene instead of the editor camera
 	add_child(_editor_camera_position)
 	
 	debug("Created editor camera OWDBPosition node in scene")
+
+func _remove_editor_camera_position():
+	if _editor_camera_position and is_instance_valid(_editor_camera_position):
+		_editor_camera_position.queue_free()
+		_editor_camera_position = null
+		debug("Removed editor camera OWDBPosition node")
 
 func _update_editor_camera_position():
 	var editor_camera = _get_editor_camera()
@@ -275,27 +303,19 @@ func _update_editor_camera_position():
 	if _editor_camera_position and is_instance_valid(_editor_camera_position):
 		_editor_camera_position.global_position = editor_camera.global_position
 
-func _remove_editor_camera_position():
-	if _editor_camera_position and is_instance_valid(_editor_camera_position):
-		_editor_camera_position.queue_free()
-		_editor_camera_position = null
-		debug("Removed editor camera OWDBPosition node")
 
-func _register_with_syncer():
-	if Engine.is_editor_hint():
-		return
-		
-	if Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
-		Syncer.register_owdb(self)
-		debug("OWDB registered with Syncer")
-	
+
 func _exit_tree():
+	# Always clean up on exit
 	_remove_editor_camera_position()
 	
-	if not Engine.is_editor_hint() and Syncer and not (Syncer.has_method("is_placeholder") and Syncer.is_placeholder()):
-		Syncer.unregister_owdb()
-		debug("OWDB unregistered from Syncer")
-		
+	if syncer and is_instance_valid(syncer):
+		syncer.unregister_owdb()
+		syncer.queue_free()
+		syncer = null
+		debug("OWDB unregistered and freed Syncer")
+
+
 func _setup_multiplayer_signals():
 	if not multiplayer:
 		return
@@ -387,6 +407,7 @@ func reset():
 	batch_processor.batch_interval_ms = batch_interval_ms
 	batch_processor.batch_processing_enabled = batch_processing_enabled
 	
+	_setup_syncer()
 	_setup_listeners(self)
 	batch_processor.setup()
 	is_loading = false
@@ -517,6 +538,7 @@ func debugAll():
 	print(multiplayer.get_unique_id(), ": Current threshold_ratio: ", _threshold_ratio)
 	print(multiplayer.get_unique_id(), ": Current chunk_load_range: ", _chunk_load_range)
 	print(multiplayer.get_unique_id(), ": Batch processing enabled: ", batch_processing_enabled)
+	print(multiplayer.get_unique_id(), ": Syncer instance: ", syncer != null)
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():
