@@ -25,25 +25,20 @@ var property_setters := {}
 
 var throttled_last_send := {}
 
-var _owdb: OpenWorldDatabase = null
+var owdb: OpenWorldDatabase = null
 
 func _get_syncer():
 	"""Get the Syncer instance from parent OWDB"""
-	if not _owdb:
-		_owdb = _find_owdb()
+	if not owdb:
+		owdb = _find_owdb()
 	
-	if _owdb and _owdb.syncer and is_instance_valid(_owdb.syncer):
-		return _owdb.syncer
+	if owdb and owdb.syncer and is_instance_valid(owdb.syncer):
+		return owdb.syncer
 	
 	return null
 
 func _find_owdb() -> OpenWorldDatabase:
-	var current = get_parent()
-	while current:
-		if current is OpenWorldDatabase:
-			return current
-		current = current.get_parent()
-	return null
+	return get_tree().current_scene.find_children("*", "OpenWorldDatabase", true, false)[0]
 
 func _ready():
 	parent = get_parent()

@@ -141,48 +141,52 @@ metadata/_owd_uid = "MeshInstance3D"
 metadata/_owd_last_scale = Vector3(2, 2, 2)
 metadata/_owd_last_size = 1.9999996
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.7532306, 0.65775657, 0, -0.65775657, 0.7532306, 0, 17.21387, 27.759407)
-
-[node name="MeshInstance3D7" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.660625, 0, 1.9458117)
 mesh = SubResource("CapsuleMesh_l13gw")
-skeleton = NodePath("../OpenWorldDatabase")
 metadata/_owd_uid = "MeshInstance3D7"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.9999999
 
-[node name="MeshInstance3D6" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0432496, 0, 0)
 mesh = SubResource("TorusMesh_my76s")
+skeleton = NodePath("../..")
 metadata/_owd_uid = "MeshInstance3D6"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.0
 
-[node name="MeshInstance3D8" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D8" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -2)
 mesh = SubResource("PrismMesh_uvjsd")
+skeleton = NodePath("../..")
 metadata/_owd_uid = "MeshInstance3D8"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0
 
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7310714, 0, 0)
 mesh = SubResource("BoxMesh_dinxd")
+skeleton = NodePath("../..")
 metadata/_owd_uid = "MeshInstance3D2"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0000001
 
-[node name="MeshInstance3D3" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7310714, 0, 0)
 mesh = SubResource("BoxMesh_e52gm")
+skeleton = NodePath("../..")
 metadata/_owd_uid = "MeshInstance3D3"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0000001
 
-[node name="MeshInstance3D4" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="OpenWorldDatabase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.203394, 0, 0)
 mesh = SubResource("PrismMesh_eadq1")
+skeleton = NodePath("../..")
 metadata/_owd_uid = "MeshInstance3D4"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7532306, 0.65775657, 0, -0.65775657, 0.7532306, 0, 17.21387, 27.759407)

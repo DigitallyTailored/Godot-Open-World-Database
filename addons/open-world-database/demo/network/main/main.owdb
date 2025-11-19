@@ -1,4 +1,10 @@
 MeshInstance3D|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|2.0,2.0,2.0|1.99999964237213|{"mesh":"<SphereMesh#-9223369272506357521>"}
+MeshInstance3D7|"MeshInstance3D"|1.66062498092651,0.0,1.94581174850464|0.0,0.0,0.0|1.0,1.0,1.0|1.99999988079071|{"mesh":"<CapsuleMesh#-9223367765174164248>"}
+MeshInstance3D6|"MeshInstance3D"|5.04324960708618,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<TorusMesh#-9223369333122438076>","skeleton":"../.."}
+MeshInstance3D4|"MeshInstance3D"|3.20339393615723,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<PrismMesh#-9223368673542968180>","skeleton":"../.."}
+MeshInstance3D8|"MeshInstance3D"|1.0,0.0,-2.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<PrismMesh#-9223368673542968180>","skeleton":"../.."}
+MeshInstance3D2|"MeshInstance3D"|1.73107135295868,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.00000011920929|{"mesh":"<BoxMesh#-9223369270979630184>","skeleton":"../.."}
+MeshInstance3D3|"MeshInstance3D"|1.73107135295868,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.00000011920929|{"mesh":"<BoxMesh#-9223369270979630184>","skeleton":"../.."}
 RESOURCES
 <SphereMesh#-9223369272506357521>:{"content_hash":"9cee06f0c8af29b397f0b478588532eb28069f72377938d61ac43c02d36385a0","file_path":"","original_id":"-9223369272506357521","properties":{},"type":"SphereMesh"}
 <BoxMesh#-9223369270979630184>:{"content_hash":"5df37c9c41e384d27ffb626665ae93ab3680a73dc7223baca7a87d1900c36e95","file_path":"","original_id":"-9223369270979630184","properties":{},"type":"BoxMesh"}

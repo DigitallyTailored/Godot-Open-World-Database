@@ -273,8 +273,8 @@ func _on_batch_complete():
 				for uid in owdb.chunk_lookup[size][chunk_pos]:
 					if owdb.loaded_nodes_by_uid.has(uid):
 						var node = owdb.loaded_nodes_by_uid[uid]
-						if node.has_node("Sync"):
-							newly_unloaded_entities.append(node.name)
+						#if node.has_node("Sync"):
+						#	newly_unloaded_entities.append(node.name)
 			
 			if loaded_chunks.has(size):
 				loaded_chunks[size].erase(chunk_pos)

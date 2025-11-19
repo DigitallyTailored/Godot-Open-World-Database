@@ -20,10 +20,10 @@ shape = SubResource("CapsuleShape3D_dovo2")
 transform = Transform3D(1.32366e-07, 0, -11.1, 0, 11.1, 0, 11.1, 0, 1.32366e-07, 0, 1.36126, 0)
 mesh = SubResource("TextMesh_8afob")
 
-[node name="OWDBPosition" type="Node3D" parent="."]
-script = ExtResource("3_qb5jb")
-metadata/_custom_type_script = "uid://buh6cddjkykg2"
-
 [node name="OWDBSync" type="Node" parent="."]
 script = ExtResource("3_swm6j")
 metadata/_custom_type_script = "uid://3h882b2n4d1f"
+
+[node name="OWDBPosition" type="Node3D" parent="."]
+script = ExtResource("3_qb5jb")
+metadata/_custom_type_script = "uid://buh6cddjkykg2"

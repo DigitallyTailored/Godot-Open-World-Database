@@ -59,7 +59,6 @@ func _add_player(id: int) -> void:
 	var node_name = str(id)
 	var rng = RandomNumberGenerator.new()
 	
-	# Create player with both OWDBSync and OWDBPosition
 	var player_scene = load("res://addons/open-world-database/demo/network/player/player.tscn")
 	var player = player_scene.instantiate()
 	player.name = node_name
@@ -69,18 +68,23 @@ func _add_player(id: int) -> void:
 		rng.randi_range(-10, 10)
 	)
 	
-	# Setup sync node
+	# Setup sync node - need to think about a way to not have to do this
 	var sync_node = player.find_child("OWDBSync")
-	if sync_node:
-		sync_node.peer_id = id
+	sync_node.peer_id = id
+	"""
+	sync_node.owdb = owdb
 	
-	# Setup OWDBPosition (it will automatically get the peer_id from OWDBSync node)
-	var owdb_position = player.find_child("OWDBPosition")
-	if owdb_position:
-		owdb_position.refresh_peer_registration()
+	var position_node = player.find_child("OWDBPosition")
+	position_node.sync_node = sync_node
+	position_node.owdb = owdb
+	"""
+	# Add player to the scene FIRST - this triggers _ready() which handles registration
+	add_child(player)
 	
-	# Add player to the scene - it needs to be under owdb to access the network syncer
-	owdb.add_child(player)
+	# REMOVE the manual refresh_peer_registration() call - let _ready() handle it
+	
+	# Call handle_peer_connected AFTER the player is in the tree
+	owdb.syncer.handle_peer_connected(id)
 	
 	# Make player visible to appropriate peers
 	owdb.syncer.entity_peer_visible(id, node_name, true)
