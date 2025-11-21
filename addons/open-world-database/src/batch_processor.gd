@@ -21,6 +21,9 @@ var batch_timer: Timer
 var is_processing_batch: bool = false
 var batch_complete_callbacks: Array[Callable] = []
 
+# Scene cache to avoid reloading the same scenes
+var scene_cache: Dictionary = {}  # scene_path -> PackedScene
+
 enum OperationType {
 	LOAD_NODE,
 	UNLOAD_NODE,
@@ -53,6 +56,10 @@ func reset():
 	batch_complete_callbacks.clear()
 	if batch_timer:
 		batch_timer.stop()
+
+func clear_scene_cache():
+	scene_cache.clear()
+	_debug("Scene cache cleared (" + str(scene_cache.size()) + " entries)")
 
 func _process_batch():
 	if is_processing_batch:
@@ -135,10 +142,15 @@ func _create_node(node_source: String) -> Node:
 	var new_node: Node
 	
 	if node_source.begins_with("res://"):
-		var scene = load(node_source)
+		# Check cache first
+		var scene: PackedScene = scene_cache.get(node_source)
 		if not scene:
-			_debug("Failed to load scene: " + node_source)
-			return null
+			scene = load(node_source)
+			if not scene:
+				_debug("Failed to load scene: " + node_source)
+				return null
+			scene_cache[node_source] = scene
+			_debug("Cached scene: " + node_source + " (cache size: " + str(scene_cache.size()) + ")")
 		new_node = scene.instantiate()
 	else:
 		new_node = ClassDB.instantiate(node_source)
@@ -148,7 +160,6 @@ func _create_node(node_source: String) -> Node:
 	
 	return new_node
 
-# src/BatchProcessor.gd - Mark network-spawned nodes
 func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
 	_debug("=== _instantiate_node START ===")
 	_debug("  Source: " + node_source)
@@ -183,7 +194,6 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	_debug("  Adding child to parent")
 	parent_node_target.add_child(new_node)
 	
-	# Updated: Use local syncer instance
 	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
 		if not owdb.syncer.is_node_registered(new_node):
 			_debug("  Registering with syncer")
@@ -191,7 +201,6 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	
 	_debug("=== _instantiate_node COMPLETE ===")
 	return true
-
 
 func _immediate_load_node(uid: String):
 	if not owdb or uid not in owdb.node_monitor.stored_nodes:
@@ -518,5 +527,6 @@ func get_queue_info() -> Dictionary:
 		"instantiate_operations_queued": instantiate_count,
 		"remove_operations_queued": remove_count,
 		"batch_processing_active": batch_timer.time_left > 0,
-		"is_processing_batch": is_processing_batch
+		"is_processing_batch": is_processing_batch,
+		"scene_cache_size": scene_cache.size()
 	}

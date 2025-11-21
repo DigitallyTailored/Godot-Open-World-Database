@@ -146,12 +146,6 @@ metadata/_owd_last_size = 0.60000014
 [node name="Trees" type="Node" parent="OpenWorldDatabase"]
 metadata/_owd_uid = "Trees"
 
-[node name="Tree9-1754841766422_2240" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.87327, 6.8622336, 60.33847)
-metadata/_owd_uid = "Tree9-1754841766422_2240"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 12.232294
-
 [node name="Tree-175484176642_8540" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -70.24895, 5.33541, -62.028656)
 metadata/_owd_uid = "Tree-175484176642_8540"
@@ -248,6 +242,12 @@ metadata/_owd_uid = "Tree8-1754841766422_7677"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 12.232293
 
+[node name="Tree9-1754841766422_2240" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.87327, 6.8622336, 60.33847)
+metadata/_owd_uid = "Tree9-1754841766422_2240"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 12.232294
+
 [node name="Tree5-1754841766422_6463" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62.472504, 6.621319, 56.52676)
 metadata/_owd_uid = "Tree5-1754841766422_6463"
@@ -311,13 +311,6 @@ metadata/_owd_uid = "CSGCombiner3D-1760339166273_4211"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.551004
 
-[node name="CSGBox3D-1760341000592_4494" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.107984304, 0.13393307, -0.16983032)
-operation = 2
-metadata/_owd_uid = "CSGBox3D-1760341000592_4494"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
-
 [node name="CSGBox3D-1760339092005_3608" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5510039, 0.2695155, -0.7328949)
 metadata/_owd_uid = "CSGBox3D-1760339092005_3608"
@@ -333,6 +326,13 @@ metadata/_owd_last_size = 1.0
 
 [node name="CSGBox3D-1760341000592_6306" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
 metadata/_owd_uid = "CSGBox3D-1760341000592_6306"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 1.0
+
+[node name="CSGBox3D-1760341000592_4494" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.107984304, 0.13393307, -0.16983032)
+operation = 2
+metadata/_owd_uid = "CSGBox3D-1760341000592_4494"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 1.0
 
