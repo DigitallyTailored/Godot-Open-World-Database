@@ -187,6 +187,10 @@ func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 			print("0: ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
 
 func _setup_syncer():
+	# FIXED: Skip syncer setup in editor mode
+	if Engine.is_editor_hint():
+		return
+		
 	if syncer and is_instance_valid(syncer):
 		syncer.unregister_owdb()
 		syncer.queue_free()

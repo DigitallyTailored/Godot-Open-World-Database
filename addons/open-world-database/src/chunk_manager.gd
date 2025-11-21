@@ -297,6 +297,8 @@ func _on_batch_complete():
 	owdb.debug("Chunk states updated after batch completion")
 
 func _is_syncer_available() -> bool:
+	if Engine.is_editor_hint():
+		return false
 	return owdb.syncer != null and is_instance_valid(owdb.syncer)
 
 func _notify_syncer_of_changes(loaded_entities: Array, unloaded_entities: Array):

@@ -14,11 +14,12 @@ static func remove_children(node: Node):
 		child.free()
 
 static func generate_next_available_name(base_name: String, stored_nodes: Dictionary) -> String:
+	# FIXED: First check if the exact name is available (don't strip numbers yet)
+	if not _name_exists_in_stored_nodes(base_name, stored_nodes):
+		return base_name
+	
+	# Name collision detected - extract base and find next available number
 	var actual_base = _extract_base_name(base_name)
-	
-	if not _name_exists_in_stored_nodes(actual_base, stored_nodes):
-		return actual_base
-	
 	var highest_number = _find_highest_number_for_base(actual_base, stored_nodes)
 	
 	return actual_base + str(highest_number + 1)

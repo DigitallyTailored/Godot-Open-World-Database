@@ -11,24 +11,33 @@ var sync_node: OWDBSync = null
 
 func _ready():
 	owdb = _find_owdb()
-	if owdb:
+	
+	# Only register with chunk manager if it exists
+	if owdb and owdb.chunk_manager:
 		position_id = owdb.chunk_manager.register_position(self)
 		call_deferred("force_update")
 	
-	_update_peer_registration()
+	# FIXED: Only do syncer registration in runtime, not editor
+	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
+		_update_peer_registration()
 
 func _exit_tree():
-	if owdb and position_id != "":
+	if owdb and owdb.chunk_manager and position_id != "":
 		owdb.chunk_manager.unregister_position(position_id)
 	
-	_unregister_from_syncer()
+	# FIXED: Only unregister from syncer in runtime mode
+	if not Engine.is_editor_hint():
+		_unregister_from_syncer()
 
 func get_peer_id() -> int:
-	if not Engine.is_editor_hint():
-		var sync_node = _find_sync_node()
-		if sync_node:
-			return sync_node.peer_id
+	# FIXED: Return 1 in editor mode, proper peer ID in runtime
+	if Engine.is_editor_hint():
+		return 1
 		
+	var sync_node = _find_sync_node()
+	if sync_node:
+		return sync_node.peer_id
+	
 	return 1
 
 func _find_sync_node():
@@ -51,6 +60,14 @@ func _find_sync_node():
 	return null
 
 func _update_peer_registration():
+	# FIXED: Skip entirely in editor mode
+	if Engine.is_editor_hint():
+		return
+	
+	# Skip if syncer isn't available
+	if not owdb or not owdb.syncer or not is_instance_valid(owdb.syncer):
+		return
+		
 	var current_peer_id = get_peer_id()
 	
 	if current_peer_id != _cached_peer_id:
@@ -61,19 +78,29 @@ func _update_peer_registration():
 		_cached_peer_id = current_peer_id
 
 func _register_with_syncer(peer_id: int):
-	if owdb and owdb.syncer:
+	# FIXED: Guard against editor mode
+	if Engine.is_editor_hint():
+		return
+		
+	if owdb and owdb.syncer and is_instance_valid(owdb.syncer):
 		owdb.syncer.register_peer_position(peer_id, self)
 
 func _unregister_from_syncer(peer_id: int = -1):
-	if owdb and owdb.syncer:
+	# FIXED: Guard against editor mode
+	if Engine.is_editor_hint():
+		return
+		
+	if owdb and owdb.syncer and is_instance_valid(owdb.syncer):
 		var id_to_unregister = peer_id if peer_id != -1 else _cached_peer_id
 		owdb.syncer.unregister_peer_position(id_to_unregister)
 
 func _process(_delta):
-	if not owdb or owdb.is_loading or position_id == "":
+	if not owdb or not owdb.chunk_manager or owdb.is_loading or position_id == "":
 		return
 	
-	_update_peer_registration()
+	# FIXED: Only update peer registration in runtime mode
+	if not Engine.is_editor_hint():
+		_update_peer_registration()
 	
 	var current_pos = global_position
 	var distance_squared = last_position.distance_squared_to(current_pos)
@@ -84,10 +111,13 @@ func _process(_delta):
 
 func _find_owdb() -> OpenWorldDatabase:
 	var root = get_tree().edited_scene_root if Engine.is_editor_hint() else get_tree().current_scene
-	return root.find_children("*", "OpenWorldDatabase", true, false)[0]
+	if not root:
+		return null
+	var results = root.find_children("*", "OpenWorldDatabase", true, false)
+	return results[0] if results.size() > 0 else null
 
 func force_update():
-	if owdb and not owdb.is_loading and position_id != "":
+	if owdb and owdb.chunk_manager and not owdb.is_loading and position_id != "":
 		var current_pos = global_position
 		owdb.chunk_manager.update_position_chunks(position_id, current_pos)
 		last_position = current_pos
@@ -96,6 +126,10 @@ func get_position_id() -> String:
 	return position_id
 
 func refresh_peer_registration():
+	# FIXED: Guard against editor mode
+	if Engine.is_editor_hint():
+		return
+		
 	_cached_peer_id = -1
 	sync_node = null
 	_update_peer_registration()

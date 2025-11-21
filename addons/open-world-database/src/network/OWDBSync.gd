@@ -38,7 +38,8 @@ func _get_syncer():
 	return null
 
 func _find_owdb() -> OpenWorldDatabase:
-	return get_tree().current_scene.find_children("*", "OpenWorldDatabase", true, false)[0]
+	var results = get_tree().current_scene.find_children("*", "OpenWorldDatabase", true, false)
+	return results[0] if results.size() > 0 else null
 
 func _ready():
 	parent = get_parent()

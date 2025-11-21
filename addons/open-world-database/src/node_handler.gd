@@ -1,15 +1,10 @@
 # src/NodeHandler.gd
-# Handles node lifecycle events and coordinates with chunk system for loading decisions
-# Manages node entering/exiting tree, moves, renames, type changes, and duplicate UID resolution
-# Ensures nodes are loaded/unloaded based on chunk requirements
-# Input: Tree change signals, node modifications
-# Output: Node database updates, chunk lookup maintenance, deferred unloading
 @tool
 extends RefCounted
 class_name NodeHandler
 
 var owdb: OpenWorldDatabase
-var _pending_nodes: Dictionary = {}  # Tracks nodes waiting for owner to be set
+var _pending_retries: Dictionary = {}  # node_id -> retry_count
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
@@ -19,14 +14,43 @@ func handle_child_entered_tree(node: Node):
 		return
 
 	# In editor, nodes might not have owner set immediately when dropped
-	# Store them and retry after a frame
 	if Engine.is_editor_hint() and node.owner == null:
 		var node_id = node.get_instance_id()
-		if not _pending_nodes.has(node_id):
-			_pending_nodes[node_id] = 0  # Retry counter
-			owdb.get_tree().process_frame.connect(_retry_handle_node.bind(node_id, node), CONNECT_ONE_SHOT)
+		
+		# FIXED: Simple deferred retry - no signals needed!
+		if not _pending_retries.has(node_id):
+			_pending_retries[node_id] = 0
+		
+		# Schedule a retry check for next frame
+		call_deferred("_check_node_owner", node_id, node)
 		return
 	
+	_process_node_with_owner(node)
+
+func _check_node_owner(node_id: int, node: Node):
+	# Validate node still exists and is in tree
+	if not is_instance_valid(node) or not node.is_inside_tree():
+		_pending_retries.erase(node_id)
+		return
+	
+	# If owner is now set, process it
+	if node.owner != null:
+		_pending_retries.erase(node_id)
+		_process_node_with_owner(node)
+		return
+	
+	# Otherwise retry up to 10 times
+	var retry_count = _pending_retries.get(node_id, 0)
+	if retry_count < 10:
+		_pending_retries[node_id] = retry_count + 1
+		# Try again next frame
+		call_deferred("_check_node_owner", node_id, node)
+	else:
+		# Give up after 10 retries
+		_pending_retries.erase(node_id)
+		owdb.debug("WARNING: Node failed to get owner after 10 retries: ", node.name)
+
+func _process_node_with_owner(node: Node):
 	# Skip nodes that don't belong to our scene (but null owner is OK during loading)
 	if node.owner != owdb.owner and node.owner != null:
 		return
@@ -60,32 +84,14 @@ func handle_child_entered_tree(node: Node):
 		return
 	
 	_handle_new_node(node)
-
-func _retry_handle_node(node_id: int, node: Node):
-	if not is_instance_valid(node) or not node.is_inside_tree():
-		_pending_nodes.erase(node_id)
-		return
-	
-	var retry_count = _pending_nodes.get(node_id, 0)
-	
-	# If owner is now set, process the node
-	if node.owner != null:
-		_pending_nodes.erase(node_id)
-		handle_child_entered_tree(node)
-		return
-	
-	# Retry up to 10 times (10 frames)
-	if retry_count < 10:
-		_pending_nodes[node_id] = retry_count + 1
-		owdb.get_tree().process_frame.connect(_retry_handle_node.bind(node_id, node), CONNECT_ONE_SHOT)
-	else:
-		# Give up after 10 retries
-		_pending_nodes.erase(node_id)
-		owdb.debug("WARNING: Node failed to get owner after 10 retries: ", node.name)
-
+		
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:
 		return
+	
+	# Clean up pending retries if node exits tree
+	var node_id = node.get_instance_id()
+	_pending_retries.erase(node_id)
 	
 	var uid = NodeUtils.get_valid_node_uid(node)
 	if uid != "" and is_instance_valid(node) and node.is_inside_tree():
@@ -93,10 +99,7 @@ func handle_child_exiting_tree(node: Node):
 
 func _handle_node_move(node: Node):
 	owdb.debug("NODE MOVED: ", node.name)
-	
-	# Check for type changes when node moves
 	handle_node_type_change(node)
-	
 	owdb.node_monitor.update_stored_node(node)
 	
 	var uid = NodeUtils.get_valid_node_uid(node)
@@ -139,10 +142,8 @@ func _handle_new_node_positioning(node: Node):
 	var chunk_pos = Vector2i(int(node_position.x / owdb.chunk_sizes[size_cat]), int(node_position.z / owdb.chunk_sizes[size_cat])) if size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
 	
 	owdb.add_to_chunk_lookup(uid, node_position, node_size)
-	
 	owdb.debug("NODE ADDED: " + node.name + " at position: " + str(node_position) + " - " + str(owdb.get_total_database_nodes()) + " total nodes")
 	
-	# Skip chunk checks for network-spawned nodes in PEER mode
 	if node.has_meta("_network_spawned") and owdb.is_network_peer():
 		owdb.debug("NETWORK-SPAWNED node - skipping chunk check: ", node.name)
 		return
@@ -170,9 +171,7 @@ func handle_node_rename(node: Node) -> bool:
 		owdb.loaded_nodes_by_uid.erase(old_uid)
 	
 	NodeUtils.update_chunk_lookup_uid(owdb.chunk_lookup, old_uid, node.name)
-	
 	NodeUtils.update_parent_references(owdb.node_monitor.stored_nodes, old_uid, node.name)
-	
 	owdb.batch_processor.remove_from_queues(old_uid)
 	
 	return true
@@ -185,34 +184,24 @@ func handle_node_type_change(node: Node) -> bool:
 	var stored_info = owdb.node_monitor.stored_nodes[uid]
 	var current_source = _get_node_source(node)
 	
-	# Check if the node type (source) has changed
 	if stored_info.scene != current_source:
 		owdb.debug("NODE TYPE CHANGED: " + uid + " from " + stored_info.scene + " to " + current_source)
 		
-		# Store old size and position for chunk lookup cleanup
 		var old_position = stored_info.position
 		var old_size = stored_info.size
-		
-		# Force recalculate size since node type changed
 		var new_size = NodeUtils.calculate_node_size(node, true)
 		var new_position = node.global_position if node is Node3D else Vector3.ZERO
 		
-		# Update stored info
 		stored_info.scene = current_source
 		stored_info.size = new_size
 		stored_info.position = new_position
 		
-		# Remove from old chunk lookup
 		owdb.remove_from_chunk_lookup(uid, old_position, old_size)
-		
-		# Add to new chunk lookup
 		owdb.add_to_chunk_lookup(uid, new_position, new_size)
 		
-		# Check if the node should still be loaded in its current chunk
 		var new_size_cat = owdb.get_size_category(new_size)
 		var new_chunk_pos = Vector2i(int(new_position.x / owdb.chunk_sizes[new_size_cat]), int(new_position.z / owdb.chunk_sizes[new_size_cat])) if new_size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
 		
-		# If the node should no longer be loaded (e.g., changed to a type that puts it in an unloaded chunk)
 		if not owdb.chunk_manager.is_chunk_loaded(new_size_cat, new_chunk_pos):
 			owdb.debug("NODE TYPE CHANGE REQUIRES UNLOAD: ", uid)
 			owdb.call_deferred("_unload_node_not_in_chunk", node)
