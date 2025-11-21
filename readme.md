@@ -2,6 +2,8 @@
 
 A powerful Godot addon that brings efficient world streaming to your indie game, with optional multiplayer networking capabilities. Build massive open worlds that perform beautifully, inspired by the seamless worlds of modern RPGs and adventure games.
 
+⚠️ Warning: This project is under active development. Load/unload functionality may cause unexpected node deletion. Back up your data regularly.
+
 ## The Problem: When Worlds Get Too Big
 
 Large, detailed open worlds are incredible to explore, but they present a significant technical challenge. Those expansive landscapes that feel infinite are actually cleverly managed behind the scenes. In Godot, dropping thousands of objects, AI agents, physics bodies, or nodes into a single scene will severely impact performance. Traditional solutions involve custom LOD systems or splitting your world into separate scenes - all of which break your creative flow and make iteration painful.
