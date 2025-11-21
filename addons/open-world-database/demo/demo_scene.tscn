@@ -230,9 +230,9 @@ metadata/_owd_uid = "Tree3-1754841518889_1070"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 12.232294
 
-[node name="Tree3-1754841766421_3940" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -59.722687, 5.629352, 18.45353)
-metadata/_owd_uid = "Tree3-1754841766421_3940"
+[node name="Tree5-175484151889_3438" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 81.195724, 6.2161, -44.537155)
+metadata/_owd_uid = "Tree5-175484151889_3438"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 12.232294
 
@@ -269,12 +269,6 @@ metadata/_owd_last_size = 12.232295
 [node name="Tree12-1754841766424_7084" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65.22372, 6.618286, 7.136217)
 metadata/_owd_uid = "Tree12-1754841766424_7084"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 12.232294
-
-[node name="Tree5-175484151889_3438" type="Node3D" parent="OpenWorldDatabase/Trees" instance=ExtResource("7_uuswd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 81.195724, 6.2161, -44.537155)
-metadata/_owd_uid = "Tree5-175484151889_3438"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 12.232294
 

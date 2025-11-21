@@ -187,7 +187,6 @@ func debug(v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""):
 			print("0: ", str(v1), str(v2), str(v3), str(v4), str(v5), str(v6), str(v7))
 
 func _setup_syncer():
-	# FIXED: Skip syncer setup in editor mode
 	if Engine.is_editor_hint():
 		return
 		
@@ -474,22 +473,26 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 	
 	var node_info = node_monitor.stored_nodes[uid]
 	
-	node_monitor.remove_node_resources(uid)
-	
-	remove_from_chunk_lookup(uid, node_info.position, node_info.size)
-	node_monitor.stored_nodes.erase(uid)
-	loaded_nodes_by_uid.erase(uid)
-	batch_processor.remove_from_queues(uid)
-	
-	debug("NODE REMOVED FROM DATABASE: " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
-	
 	var child_uids = []
 	for child_uid in node_monitor.stored_nodes:
 		if node_monitor.stored_nodes[child_uid].parent_uid == uid:
 			child_uids.append(child_uid)
 	
 	for child_uid in child_uids:
-		_remove_node_and_children_from_database(child_uid)
+		var child_node = loaded_nodes_by_uid.get(child_uid)
+		
+		if child_node and is_instance_valid(child_node) and child_node.is_inside_tree():
+			debug("PRESERVING CHILD IN TREE: ", child_uid, " (parent type change - keeping parent_uid)")
+		else:
+			_remove_node_and_children_from_database(child_uid)
+	
+	node_monitor.remove_node_resources(uid)
+	remove_from_chunk_lookup(uid, node_info.position, node_info.size)
+	node_monitor.stored_nodes.erase(uid)
+	loaded_nodes_by_uid.erase(uid)
+	batch_processor.remove_from_queues(uid)
+	
+	debug("NODE REMOVED FROM DATABASE: " + uid + " - " + str(get_total_database_nodes()) + " total database nodes")
 
 func save_database(custom_name: String = ""):
 	database.save_database(custom_name)
@@ -547,7 +550,6 @@ func _unload_node_not_in_chunk(node: Node):
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
 		
-		# Notify syncer that node is being unloaded
 		if syncer and is_instance_valid(syncer) and node.has_meta("_network_spawned"):
 			syncer.notify_node_unloaded(node.name)
 	

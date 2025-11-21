@@ -4,7 +4,7 @@ extends RefCounted
 class_name NodeHandler
 
 var owdb: OpenWorldDatabase
-var _pending_retries: Dictionary = {}  # node_id -> retry_count
+var _pending_retries: Dictionary = {}
 
 func _init(open_world_database: OpenWorldDatabase):
 	owdb = open_world_database
@@ -13,45 +13,36 @@ func handle_child_entered_tree(node: Node):
 	if not is_instance_valid(node) or not owdb.is_ancestor_of(node):
 		return
 
-	# In editor, nodes might not have owner set immediately when dropped
 	if Engine.is_editor_hint() and node.owner == null:
 		var node_id = node.get_instance_id()
 		
-		# FIXED: Simple deferred retry - no signals needed!
 		if not _pending_retries.has(node_id):
 			_pending_retries[node_id] = 0
 		
-		# Schedule a retry check for next frame
 		call_deferred("_check_node_owner", node_id, node)
 		return
 	
 	_process_node_with_owner(node)
 
 func _check_node_owner(node_id: int, node: Node):
-	# Validate node still exists and is in tree
 	if not is_instance_valid(node) or not node.is_inside_tree():
 		_pending_retries.erase(node_id)
 		return
 	
-	# If owner is now set, process it
 	if node.owner != null:
 		_pending_retries.erase(node_id)
 		_process_node_with_owner(node)
 		return
 	
-	# Otherwise retry up to 10 times
 	var retry_count = _pending_retries.get(node_id, 0)
 	if retry_count < 10:
 		_pending_retries[node_id] = retry_count + 1
-		# Try again next frame
 		call_deferred("_check_node_owner", node_id, node)
 	else:
-		# Give up after 10 retries
 		_pending_retries.erase(node_id)
 		owdb.debug("WARNING: Node failed to get owner after 10 retries: ", node.name)
 
 func _process_node_with_owner(node: Node):
-	# Skip nodes that don't belong to our scene (but null owner is OK during loading)
 	if node.owner != owdb.owner and node.owner != null:
 		return
 		
@@ -60,6 +51,13 @@ func _process_node_with_owner(node: Node):
 			return
 		else:
 			var uid = node.get_meta("_owd_uid")
+			
+			if not owdb.node_monitor.stored_nodes.has(uid):
+				owdb.debug("RE-REGISTERING ORPHANED NODE: ", uid)
+				_handle_new_node(node)
+				call_deferred("_fix_parent_uid_for_children", node)
+				return
+			
 			if owdb.loaded_nodes_by_uid.has(uid):
 				var existing_node = owdb.loaded_nodes_by_uid[uid]
 				if existing_node != node and is_instance_valid(existing_node):
@@ -84,12 +82,31 @@ func _process_node_with_owner(node: Node):
 		return
 	
 	_handle_new_node(node)
+
+func _fix_parent_uid_for_children(parent: Node):
+	"""Fix parent_uid for all children after parent type change"""
+	var parent_uid = NodeUtils.get_valid_node_uid(parent)
+	if parent_uid == "":
+		return
+	
+	for child in parent.get_children():
+		if not child.has_meta("_owd_uid"):
+			continue
+			
+		var child_uid = child.get_meta("_owd_uid")
+		
+		if owdb.node_monitor.stored_nodes.has(child_uid):
+			var child_info = owdb.node_monitor.stored_nodes[child_uid]
+			if child_info.parent_uid != parent_uid:
+				owdb.debug("FIXING PARENT_UID: ", child_uid, " -> parent: ", parent_uid)
+				child_info.parent_uid = parent_uid
+		
+		_fix_parent_uid_for_children(child)
 		
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:
 		return
 	
-	# Clean up pending retries if node exits tree
 	var node_id = node.get_instance_id()
 	_pending_retries.erase(node_id)
 	
