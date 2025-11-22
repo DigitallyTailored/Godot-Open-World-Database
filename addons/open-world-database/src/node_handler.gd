@@ -167,9 +167,10 @@ func _handle_new_node_positioning(node: Node):
 	
 	if not owdb.chunk_manager.is_chunk_loaded(size_cat, chunk_pos):
 		owdb.debug("NODE ADDED TO UNLOADED CHUNK - UNLOADING: ", node.name)
-		owdb.call_deferred("_unload_node_not_in_chunk", node)
+		# FIXED: Pass instance ID instead of node
+		owdb.call_deferred("_unload_node_not_in_chunk", node.get_instance_id())
 		return
-		
+
 func handle_node_rename(node: Node) -> bool:
 	var old_uid = NodeUtils.get_valid_node_uid(node)
 	if old_uid == "" or old_uid == node.name:
@@ -221,7 +222,8 @@ func handle_node_type_change(node: Node) -> bool:
 		
 		if not owdb.chunk_manager.is_chunk_loaded(new_size_cat, new_chunk_pos):
 			owdb.debug("NODE TYPE CHANGE REQUIRES UNLOAD: ", uid)
-			owdb.call_deferred("_unload_node_not_in_chunk", node)
+			# FIXED: Pass instance ID instead of node
+			owdb.call_deferred("_unload_node_not_in_chunk", node.get_instance_id())
 		
 		owdb.debug("NODE TYPE UPDATE COMPLETE: " + uid + " size: " + str(old_size) + " -> " + str(new_size))
 		return true

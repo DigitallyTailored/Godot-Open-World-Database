@@ -276,6 +276,9 @@ func _immediate_unload_node(uid: String):
 	
 	owdb.nodes_being_unloaded[uid] = true
 	
+	# FIXED: Mark all children as being unloaded
+	_mark_children_as_unloading(node)
+	
 	var node_info = owdb.node_monitor.stored_nodes.get(uid, {})
 	if not node_info.is_empty():
 		if node is Node3D:
@@ -288,6 +291,15 @@ func _immediate_unload_node(uid: String):
 	
 	owdb.call_deferred("_cleanup_unload_tracking", uid)
 	_debug("NODE UNLOADED: " + uid)
+
+func _mark_children_as_unloading(node: Node):
+	"""Recursively mark all children as being unloaded"""
+	for child in node.get_children():
+		var child_uid = NodeUtils.get_valid_node_uid(child)
+		if child_uid != "":
+			owdb.nodes_being_unloaded[child_uid] = true
+			owdb.loaded_nodes_by_uid.erase(child_uid)
+		_mark_children_as_unloading(child)
 
 func _remove_scene_node(node_name: String) -> bool:
 	if not owdb or not owdb.loaded_nodes_by_uid.has(node_name):

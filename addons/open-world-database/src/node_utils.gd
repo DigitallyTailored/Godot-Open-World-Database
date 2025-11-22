@@ -89,7 +89,6 @@ static func get_node_aabb(node: Node, exclude_top_level_transform: bool = true) 
 		bounds = node.transform * bounds
 
 	return bounds
-
 static func calculate_node_size(node: Node, force_recalculate: bool = false) -> float:
 	if not node is Node3D:
 		return 0.0
@@ -101,7 +100,7 @@ static func calculate_node_size(node: Node, force_recalculate: bool = false) -> 
 		if node_3d.scale == meta:
 			return node_3d.get_meta("_owd_last_size")
 	
-	var aabb = get_node_aabb(node_3d, false)
+	var aabb = get_node_aabb_scaled_only(node_3d)
 	var size = aabb.size
 	var max_size = max(size.x, max(size.y, size.z))
 	
@@ -109,6 +108,26 @@ static func calculate_node_size(node: Node, force_recalculate: bool = false) -> 
 	node_3d.set_meta("_owd_last_size", max_size)
 	
 	return max_size
+
+static func get_node_aabb_scaled_only(node: Node3D) -> AABB:
+	var bounds: AABB = AABB()
+
+	if node is VisualInstance3D:
+		bounds = node.get_aabb()
+
+	for child in node.get_children():
+		if child is Node3D:
+			var child_bounds: AABB = get_node_aabb_scaled_only(child)
+			if bounds.size == Vector3.ZERO:
+				bounds = child_bounds
+			else:
+				bounds = bounds.merge(child_bounds)
+
+	var scaled_size = bounds.size * node.scale
+	bounds.size = scaled_size
+	
+	return bounds
+
 
 static func get_storable_properties(node: Node) -> Array:
 	return node.get_property_list().filter(func(prop):

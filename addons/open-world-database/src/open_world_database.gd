@@ -538,8 +538,9 @@ func _notification(what: int) -> void:
 		if what == NOTIFICATION_EDITOR_PRE_SAVE:
 			save_database()
 
-func _unload_node_not_in_chunk(node: Node):
-	if not is_instance_valid(node):
+func _unload_node_not_in_chunk(node_instance_id: int):
+	var node = instance_from_id(node_instance_id)
+	if not is_instance_valid(node) or not node is Node:
 		return
 	
 	var was_loading = is_loading
@@ -550,13 +551,26 @@ func _unload_node_not_in_chunk(node: Node):
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
 		
+		# FIXED: Mark all children as being unloaded
+		_mark_children_as_unloading(node)
+		
 		if syncer and is_instance_valid(syncer) and node.has_meta("_network_spawned"):
 			syncer.notify_node_unloaded(node.name)
 	
-	debug("NODE REMOVED (unloaded chunk): " + node.name + " - " + str(get_total_database_nodes()) + " total database nodes")
+	debug("NODE UNLOADED: " + node.name + " - " + str(get_currently_loaded_nodes()) + " total loaded nodes")
 	
 	node.free()
 	is_loading = was_loading
+
+func _mark_children_as_unloading(node: Node):
+	"""Recursively mark all children as being unloaded to prevent database removal"""
+	for child in node.get_children():
+		var child_uid = NodeUtils.get_valid_node_uid(child)
+		if child_uid != "":
+			nodes_being_unloaded[child_uid] = true
+			loaded_nodes_by_uid.erase(child_uid)
+			debug("MARKING CHILD FOR UNLOAD: ", child_uid)
+		_mark_children_as_unloading(child)
 
 func _check_node_removal(node):
 	if not node or is_loading:
