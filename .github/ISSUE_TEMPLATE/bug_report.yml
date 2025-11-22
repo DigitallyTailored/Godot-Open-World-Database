@@ -1,216 +1,70 @@
 name: Bug Report
-description: Report a bug or unexpected behavior in OWDB
+description: Report a bug in OWDB
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug! Please fill out the information below to help us investigate.
-        
-        ⚠️ **Before submitting**: Check existing issues to avoid duplicates and try the latest version if possible.
-
-  - type: dropdown
-    id: bug-type
-    attributes:
-      label: Bug Category
-      description: What area is affected?
-      options:
-        - World Streaming / Chunk Loading
-        - Multiplayer / Networking
-        - Resource Sharing
-        - Editor Integration
-        - Performance
-        - Data Persistence (.owdb files)
-        - Synchronization (OWDBSync)
-        - Other
-    validations:
-      required: true
+        **Before submitting:** Search [existing issues](../issues) to avoid duplicates.
 
   - type: input
-    id: plugin-version
+    id: versions
     attributes:
-      label: OWDB Version
-      description: Found in `addons/owdb/plugin.cfg` - version line
-      placeholder: "e.g., 0.1.0 or commit hash if using dev version"
-    validations:
-      required: true
-
-  - type: input
-    id: godot-version
-    attributes:
-      label: Godot Version
-      description: Help > About Godot
-      placeholder: "e.g., 4.2.1.stable.official [b09f793f5]"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: godot-renderer
-    attributes:
-      label: Renderer
-      options:
-        - Forward+
-        - Mobile
-        - Compatibility
-        - Not sure
-    validations:
-      required: true
-
-  - type: input
-    id: os
-    attributes:
-      label: Operating System
-      placeholder: "e.g., Windows 11, macOS 14.2, Ubuntu 22.04"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: network-mode
-    attributes:
-      label: Network Mode (if applicable)
-      description: Is this issue related to multiplayer?
-      options:
-        - Not using multiplayer (STANDALONE)
-        - HOST mode
-        - PEER mode
-        - Affects multiple modes
-        - Not applicable
-    validations:
-      required: false
-
-  - type: textarea
-    id: description
-    attributes:
-      label: Bug Description
-      description: Clear description of what's wrong
-      placeholder: "Describe what's happening..."
+      label: Version Info
+      description: "Format: OWDB version | Godot version | OS"
+      placeholder: "e.g., 0.1.0 | 4.2.1.stable | Windows 11"
     validations:
       required: true
 
   - type: textarea
-    id: expected
+    id: what-happened
     attributes:
-      label: Expected Behavior
-      description: What should happen instead?
-      placeholder: "Describe what you expected..."
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to Reproduce
-      description: Detailed steps to reproduce the issue
+      label: What happened?
+      description: Describe the bug and what you expected instead
       placeholder: |
-        1. Create OpenWorldDatabase node with...
-        2. Add OWDBPosition to...
-        3. Configure chunk_sizes as...
-        4. Run the scene and...
-        5. Observe that...
+        **Bug:** Chunks aren't loading when player moves
+        **Expected:** Chunks should load within 2 seconds
     validations:
       required: true
 
   - type: textarea
-    id: scene-structure
+    id: reproduce
     attributes:
-      label: Scene Structure
-      description: Your node hierarchy (especially OpenWorldDatabase, OWDBPosition, OWDBSync nodes)
+      label: How to reproduce
+      description: Minimal steps to reproduce the issue
       placeholder: |
-        Main
-        ├── OpenWorldDatabase
-        │   ├── Town
-        │   └── Wilderness
-        └── Player
-            └── OWDBPosition
-      render: text
+        1. Create OpenWorldDatabase with chunk_sizes [8, 16]
+        2. Add OWDBPosition to Player
+        3. Move player 100 units
+        4. Chunks don't load
+    validations:
+      required: true
+
+  - type: textarea
+    id: minimal-project
+    attributes:
+      label: Minimal reproducible project
+      description: |
+        🎯 **Highly recommended**: A minimal project makes fixing bugs much faster!
+        Link to a .zip file or repository that reproduces the issue.
+      placeholder: "https://github.com/yourusername/owdb-bug-reproduction or attach .zip in comments"
     validations:
       required: false
 
   - type: textarea
-    id: configuration
+    id: logs-code
     attributes:
-      label: OWDB Configuration
-      description: Settings from OpenWorldDatabase inspector
-      placeholder: |
-        chunk_sizes: [8.0, 16.0, 64.0]
-        chunk_load_range: 2
-        batch_time_limit_ms: 5
-        debug_mode: true
-      render: text
-    validations:
-      required: false
-
-  - type: textarea
-    id: code
-    attributes:
-      label: Relevant Code
-      description: Scripts or code snippets related to the issue
-      render: gdscript
-    validations:
-      required: false
-
-  - type: textarea
-    id: console-output
-    attributes:
-      label: Console Output / Error Messages
-      description: Any errors, warnings, or relevant console output
+      label: Error messages / Relevant code
+      description: Console errors, warnings, or code snippets (optional)
       render: shell
     validations:
       required: false
 
   - type: textarea
-    id: minimal-project
+    id: extra
     attributes:
-      label: Minimal Reproducible Project
-      description: |
-        Link to a minimal project that reproduces the issue, or attach a .zip
-        (Upload to GitHub, Google Drive, Dropbox, etc.)
-      placeholder: "https://github.com/yourusername/owdb-bug-reproduction or describe what's in the attached .zip"
-    validations:
-      required: false
-
-  - type: checkboxes
-    id: checklist
-    attributes:
-      label: Troubleshooting Checklist
-      description: Have you tried these basic steps?
-      options:
-        - label: I've verified this occurs with the latest OWDB version
-        - label: I've checked that OWDBPosition nodes are properly configured
-        - label: I've verified chunk_load_range covers the affected content
-        - label: I've tried enabling debug_mode to see what's happening
-        - label: I've checked the console for errors or warnings
-        - label: I've backed up my project before testing
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Screenshots, videos, or any other helpful information
-      placeholder: "Add any other context, screenshots, or videos about the problem here"
-
-  - type: dropdown
-    id: frequency
-    attributes:
-      label: How often does this occur?
-      options:
-        - Always (100% reproducible)
-        - Often (>50% of the time)
-        - Sometimes (inconsistent)
-        - Rarely (hard to reproduce)
-    validations:
-      required: false
-
-  - type: dropdown
-    id: severity
-    attributes:
-      label: Impact
-      description: How severely does this affect your project?
-      options:
-        - Critical (blocks development)
-        - High (major feature broken)
-        - Medium (workaround exists)
-        - Low (minor inconvenience)
+      label: Additional context
+      description: Screenshots, videos, or other details (optional)
     validations:
       required: false

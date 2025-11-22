@@ -1,148 +1,48 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for OWDB
+description: Suggest a new feature or improvement
 title: "[Feature]: "
-labels: ["enhancement", "needs-discussion"]
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature! Help us understand your use case and requirements.
-        
-        💡 **Tip**: Check the [Roadmap](https://github.com/yourusername/owdb#roadmap) to see if this is already planned.
-
-  - type: dropdown
-    id: feature-area
-    attributes:
-      label: Feature Area
-      description: What part of OWDB would this affect?
-      options:
-        - World Streaming / Chunk Management
-        - Multiplayer / Networking
-        - Resource Sharing
-        - Editor Tools / Workflow
-        - Performance Optimization
-        - Synchronization System
-        - Data Persistence
-        - API / Scripting
-        - Documentation
-        - Other
-    validations:
-      required: true
-
-  - type: dropdown
-    id: feature-scope
-    attributes:
-      label: Scope
-      description: Is this for single-player, multiplayer, or both?
-      options:
-        - Single-player only
-        - Multiplayer only
-        - Both single-player and multiplayer
-        - Editor/Development tools
-    validations:
-      required: true
+        Check the [Roadmap](../README.md#roadmap) and [Discussions](../discussions) first!
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement
-      description: Is your feature request related to a problem? What are you trying to accomplish?
+      label: What problem does this solve?
+      description: Describe what you're trying to accomplish
       placeholder: |
-        I'm frustrated when...
-        I'm trying to build...
-        Currently there's no way to...
+        I need to dynamically add/remove world regions at runtime, but currently...
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: Describe the feature you'd like to see
+      label: Proposed solution
+      description: How would this feature work?
       placeholder: |
-        I would like OWDB to...
-        This could work by...
-        The API might look like...
+        Add a method like `add_region(region_name, bounds, priority)` that...
     validations:
       required: true
 
   - type: textarea
-    id: use-case
+    id: example
     attributes:
-      label: Use Case / Example Scenario
-      description: Describe a concrete scenario where this would be useful
+      label: Example use case or code
+      description: Show a concrete scenario or how you'd use the API (optional)
       placeholder: |
-        In my game, I have...
-        Players would be able to...
-        This would enable...
-    validations:
-      required: true
-
-  - type: textarea
-    id: code-example
-    attributes:
-      label: Code Example (Optional)
-      description: Show how you envision using this feature
-      placeholder: |
-        # Example API usage:
-        func setup_dynamic_world():
-            $OpenWorldDatabase.enable_feature(...)
-            # Your imagined API here
+        # In my survival game:
+        $OWDB.add_region("player_base", Rect2(0, 0, 50, 50), HIGH_PRIORITY)
       render: gdscript
     validations:
       required: false
 
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Have you considered any alternative solutions or workarounds?
-      placeholder: |
-        I tried...
-        Another approach could be...
-        The workaround I'm using is...
-    validations:
-      required: false
-
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority for Your Project
-      description: How important is this feature for you?
-      options:
-        - Critical (blocking my project)
-        - High (significantly impacts development)
-        - Medium (would be very helpful)
-        - Low (nice to have)
-    validations:
-      required: false
-
   - type: checkboxes
-    id: implementation
+    id: help
     attributes:
-      label: Implementation Considerations
-      description: Select any that apply
+      label: Can you help?
       options:
-        - label: I'd be willing to help implement this
-        - label: This might affect existing functionality
-        - label: This requires breaking API changes
-        - label: This needs extensive documentation
-        - label: This impacts performance considerations
-
-  - type: textarea
-    id: similar
-    attributes:
-      label: Similar Features in Other Tools
-      description: Have you seen similar features elsewhere? (Other engines, addons, games)
-      placeholder: |
-        Unity's XYZ system does something similar...
-        The ABC addon has a feature that...
-    validations:
-      required: false
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Mockups, diagrams, links, or any other relevant information
-      placeholder: "Add any other context, screenshots, diagrams, or references here"
+        - label: I'm willing to help implement or test this
