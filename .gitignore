@@ -6,6 +6,10 @@
 !/addons/open-world-database/
 !/addons/open-world-database/**
 
+# Track GitHub templates and workflows
+!/.github/
+!/.github/**
+
 # Always track these important files
 !.gitignore
 !README.md

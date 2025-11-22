@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions & Questions
+    url: https://github.com/yourusername/owdb/discussions
+    about: Ask questions, share your projects, or discuss ideas
+  - name: 📖 Documentation
+    url: https://github.com/yourusername/owdb#readme
+    about: Check the README for guides and best practices
+  - name: 🎮 Showcase Your Game
+    url: https://github.com/yourusername/owdb/discussions/categories/showcase
+    about: Share projects built with OWDB
