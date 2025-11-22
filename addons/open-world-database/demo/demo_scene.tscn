@@ -59,87 +59,10 @@ metadata/_owd_uid = "Enemies"
 [node name="Items" type="Node" parent="OpenWorldDatabase"]
 metadata/_owd_uid = "Items"
 
-[node name="Gem-1760340853777_5438" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5449686, 5.0890923, -88.05127)
+[node name="Gem-1760340872884_4286" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.876286, 3.0643187, -87.92244)
 script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340853777_5438"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1760340857255_7159" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.8269186, 4.27358, -91.13998)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340857255_7159"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1760340860321_2439" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.497667, 3.3732731, -88.867325)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340860321_2439"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1754841331022_8770" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8976192, 4.7565513, -85.64366)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1754841331022_8770"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-176034085065_5020" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.83929, 3.3966007, -83.042404)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-176034085065_5020"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1754841332892_4072" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6879635, 4.088542, -76.86699)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1754841332892_4072"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1754841334731_7767" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.592485, 4.162832, -72.668274)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1754841334731_7767"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1760340847992_9748" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4558773, 3.9159646, -76.33184)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340847992_9748"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1760340868706_8645" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.434053, 3.224143, -93.8322)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340868706_8645"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem8-1754841910061_5614" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.6004715, 4.4235535, -76.90727)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem8-1754841910061_5614"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-1760340863303_2115" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.760006, 3.290443, -92.69021)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-1760340863303_2115"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 0.75
-
-[node name="Gem-17603408663_3883" type="Area3D" parent="OpenWorldDatabase/Items" instance=ExtResource("5_n6vgo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.83511, 3.8292456, -95.03514)
-script = ExtResource("6_l708v")
-metadata/_owd_uid = "Gem-17603408663_3883"
+metadata/_owd_uid = "Gem-1760340872884_4286"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 0.75
 
@@ -281,21 +204,9 @@ metadata/_owd_last_size = 6.0
 [node name="Rocks" type="Node" parent="OpenWorldDatabase"]
 metadata/_owd_uid = "Rocks"
 
-[node name="Rock14-1754842169895_2831" type="Node3D" parent="OpenWorldDatabase/Rocks" instance=ExtResource("8_xpfyc")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -39.035313, 5.0403576, -87.71412)
-metadata/_owd_uid = "Rock14-1754842169895_2831"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.000001
-
 [node name="Rock-1754842169893_7356" type="Node3D" parent="OpenWorldDatabase/Rocks" instance=ExtResource("8_xpfyc")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8711565, 5.1347046, -83.54362)
 metadata/_owd_uid = "Rock-1754842169893_7356"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.000001
-
-[node name="Rock3-1754842169893_5657" type="Node3D" parent="OpenWorldDatabase/Rocks" instance=ExtResource("8_xpfyc")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4498363, 5.0673904, -49.41063)
-metadata/_owd_uid = "Rock3-1754842169893_5657"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
 metadata/_owd_last_size = 2.000001
 
@@ -309,32 +220,7 @@ metadata/_owd_last_size = 2.000001
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1168365, 5.427829, -87.27158)
 metadata/_owd_uid = "CSGCombiner3D-1760339166273_4211"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 2.551004
-
-[node name="CSGBox3D-1760339092005_3608" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5510039, 0.2695155, -0.7328949)
-metadata/_owd_uid = "CSGBox3D-1760339092005_3608"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
-
-[node name="CSGBox3D-1760339110724_9154" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5037925, 0.32509327, -0.7767563)
-operation = 2
-metadata/_owd_uid = "CSGBox3D-1760339110724_9154"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
-
-[node name="CSGBox3D-1760341000592_6306" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
-metadata/_owd_uid = "CSGBox3D-1760341000592_6306"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
-
-[node name="CSGBox3D-1760341000592_4494" type="CSGBox3D" parent="OpenWorldDatabase/CSGCombiner3D-1760339166273_4211"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.107984304, 0.13393307, -0.16983032)
-operation = 2
-metadata/_owd_uid = "CSGBox3D-1760341000592_4494"
-metadata/_owd_last_scale = Vector3(1, 1, 1)
-metadata/_owd_last_size = 1.0
+metadata/_owd_last_size = 0.0
 
 [node name="Player" parent="." instance=ExtResource("10_3yay0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.676021, 4.67269, -88.72929)

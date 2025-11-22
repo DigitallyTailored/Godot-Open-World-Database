@@ -225,7 +225,6 @@ func _process(_delta: float) -> void:
 		owdb.debug("loaded_nodes: ", loaded_nodes.keys())
 
 func _validate_sync_data(node_name: String) -> bool:
-	"""Returns true if sync data exists and node is valid, false otherwise. Cleans up stale data."""
 	if not _sync_nodes.has(node_name):
 		return false
 	
@@ -240,12 +239,12 @@ func _validate_sync_data(node_name: String) -> bool:
 	return true
 
 func notify_node_unloaded(node_name: String):
-	"""Called when OWDB unloads a network-spawned node"""
 	if _sync_nodes.has(node_name):
 		_sync_nodes.erase(node_name)
-		loaded_nodes.erase(node_name)
-		if owdb:
-			owdb.debug("Cleaned up sync data for unloaded node: ", node_name)
+	loaded_nodes.erase(node_name)
+	
+	if owdb:
+		owdb.debug("Cleaned up sync data for unloaded node: ", node_name)
 
 func is_node_registered(node: Node3D) -> bool:
 	return _sync_nodes.has(node.name)
@@ -273,7 +272,14 @@ func register_node(node: Node3D, scene: String = "", peer_id: int = 1, initial_v
 					node.visible = true
 				else:
 					rpc_id(peer_id_key, "add_node", node_name, node_scene, sync_data.peer_id,
-						node.position, node.rotation, node.scale, sync_data.synced_values, node_path)
+						node.global_position, node.global_rotation, node.scale, 
+						sync_data.synced_values, _get_parent_name(node))
+
+func _get_parent_name(node: Node) -> String:
+	var parent = node.get_parent()
+	if not parent or parent == owdb:
+		return ""
+	return parent.name
 
 func unregister_node(node: Node3D) -> void:
 	var node_name = node.name
@@ -303,13 +309,33 @@ func _check_if_pre_existing(node_name: String) -> bool:
 	return not loaded_nodes.has(node_name)
 
 func _find_node_by_name(node_name: String) -> Node:
-	return loaded_nodes.get(node_name)
+	if not loaded_nodes.has(node_name):
+		return null
+	
+	var node = loaded_nodes[node_name]
+	
+	if not is_instance_valid(node):
+		loaded_nodes.erase(node_name)
+		return null
+	
+	if node.is_queued_for_deletion():
+		loaded_nodes.erase(node_name)
+		return null
+	
+	return node
 
 func _remove_node_locally(node_name: String):
-	var node = _find_node_by_name(node_name)
-	if node and is_instance_valid(node):
-		node.queue_free()
-	loaded_nodes.erase(node_name)
+	if loaded_nodes.has(node_name):
+		var node = loaded_nodes[node_name]
+		if is_instance_valid(node) and not node.is_queued_for_deletion():
+			node.queue_free()
+		loaded_nodes.erase(node_name)
+	
+	_pending_nodes.erase(node_name)
+	for resource_id in _resource_requests:
+		_resource_requests[resource_id].erase(node_name)
+		if _resource_requests[resource_id].is_empty():
+			_resource_requests.erase(resource_id)
 
 func sync_variables(node_name: String, variables_in: Dictionary, force_send_to_all: bool = false, sender_peer_id: int = -1) -> void:
 	if not _validate_sync_data(node_name):
@@ -391,16 +417,12 @@ func entity_peer_visible(peer_id: int, node_name: String, is_visible: bool) -> v
 			if peer_id == 1:
 				sync_data.parent.visible = true
 			else:
-				var properties_to_send = sync_data.synced_values.duplicate()
-				if owdb and owdb.is_ancestor_of(sync_data.parent):
-					var uid = sync_data.parent.name
-					if owdb.node_monitor.stored_nodes.has(uid):
-						var node_info = owdb.node_monitor.stored_nodes[uid]
-						properties_to_send = node_info.properties.duplicate()
-				
+				# Always send global position/rotation and parent name
+				var parent_name = _get_parent_name(sync_data.parent)
 				rpc_id(peer_id, "add_node", node_name, sync_data.parent_scene,
-					sync_data.peer_id, sync_data.parent.position,
-					sync_data.parent.rotation, sync_data.parent.scale, properties_to_send, sync_data.parent_path)
+					sync_data.peer_id, sync_data.parent.global_position,
+					sync_data.parent.global_rotation, sync_data.parent.scale,
+					sync_data.synced_values, parent_name)
 			
 	elif not is_visible and _peer_nodes_observing[peer_id].has(node_name):
 		_peer_nodes_observing[peer_id].erase(node_name)
@@ -492,12 +514,17 @@ func _create_pending_node(node_name: String):
 		owdb.batch_processor.instantiate_scene(
 			node_data.scene,
 			node_name,
-			node_data.parent_path,
+			"",  # Always use OWDB as initial parent
 			func(entity: Node) -> void:
+				# Node is already in tree at this point
 				if entity is Node3D:
+					# Set scale first (affects local space)
 					entity.scale = node_data.scale
-				entity_sync_setup(entity, node_data.scene, node_data.position, node_data.rotation, node_data.peer_id, node_data.initial_variables)
-				loaded_nodes[node_name] = entity
+					# Then set global position/rotation
+					entity.global_position = node_data.position
+					entity.global_rotation = node_data.rotation
+				
+				entity_sync_setup(entity, node_data.scene, node_data.peer_id, node_data.initial_variables, node_data.parent_name)
 		)
 
 @rpc("any_peer", "reliable")
@@ -565,14 +592,14 @@ func receive_resource(resource_id: String, resource_data: Dictionary) -> void:
 					_create_pending_node(node_name)
 
 @rpc("authority", "reliable")
-func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_path: String = "") -> void:
+func add_node(node_name: String, scene: String, peer_id: int, position: Vector3, rotation: Vector3, scale: Vector3, initial_variables: Dictionary, parent_name: String = "") -> void:
 	if _validate_sync_data(node_name):
 		if owdb:
 			owdb.debug("taking control of existing node ", node_name)
 		var sync_data = _sync_nodes[node_name]
 		sync_data.peer_id = peer_id
-		sync_data.parent.position = position
-		sync_data.parent.rotation = rotation
+		sync_data.parent.global_position = position
+		sync_data.parent.global_rotation = rotation
 		sync_data.parent.scale = scale
 		sync_data.synced_values = initial_variables
 		sync_data.is_pre_existing = false
@@ -581,7 +608,7 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		return
 	
 	if owdb:
-		owdb.debug("add_node ", node_name, " at path: ", parent_path)
+		owdb.debug("add_node ", node_name, " with parent: ", parent_name)
 	
 	_pending_nodes[node_name] = {
 		"scene": scene,
@@ -590,7 +617,7 @@ func add_node(node_name: String, scene: String, peer_id: int, position: Vector3,
 		"rotation": rotation,
 		"scale": scale,
 		"initial_variables": initial_variables,
-		"parent_path": parent_path
+		"parent_name": parent_name
 	}
 	
 	_check_and_request_resources(node_name, initial_variables)
@@ -660,9 +687,11 @@ func handle_peer_disconnected(peer_id: int) -> void:
 				unregister_node(sync_data.parent)
 			_remove_node_locally(node_name)
 
-func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: Vector3, peer_id: int, initial_variables: Dictionary) -> void:
-	node.position = position
-	node.rotation = rotation
+func entity_sync_setup(node: Node, scene: String, peer_id: int, initial_variables: Dictionary, parent_name: String = "") -> void:
+	# Add to loaded_nodes tracking
+	loaded_nodes[node.name] = node
+	
+	# Position/rotation already set in callback before this is called
 	
 	var sync_component = node.find_child("OWDBSync")
 	if sync_component:
@@ -671,5 +700,30 @@ func entity_sync_setup(node: Node, scene: String, position: Vector3, rotation: V
 	
 	if owdb and not initial_variables.is_empty():
 		owdb.node_monitor.apply_stored_properties(node, initial_variables)
-		if owdb:
-			owdb.debug("Applied OWDB properties with resources to: ", node.name)
+	
+	# Reparent to proper parent if one was specified
+	if parent_name != "":
+		call_deferred("_reparent_to_correct_parent", node.name, parent_name)
+
+func _reparent_to_correct_parent(node_name: String, parent_name: String):
+	var node = loaded_nodes.get(node_name)
+	if not node or not is_instance_valid(node):
+		return
+	
+	# Find parent - check both loaded_nodes and OWDB loaded nodes
+	var parent_node = loaded_nodes.get(parent_name)
+	if not parent_node and owdb:
+		parent_node = owdb.loaded_nodes_by_uid.get(parent_name)
+	
+	if parent_node and is_instance_valid(parent_node) and parent_node.is_inside_tree():
+		if node.get_parent() != parent_node:
+			var saved_global_pos = node.global_position
+			var saved_global_rot = node.global_rotation
+			node.reparent(parent_node)
+			node.global_position = saved_global_pos
+			node.global_rotation = saved_global_rot
+			if owdb:
+				owdb.debug("Reparented ", node_name, " to ", parent_name)
+	else:
+		# Parent doesn't exist yet, try again later
+		get_tree().create_timer(0.1).timeout.connect(_reparent_to_correct_parent.bind(node_name, parent_name))

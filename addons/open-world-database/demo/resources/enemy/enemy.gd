@@ -401,5 +401,5 @@ func die():
 	animation.stop()
 	
 	var tween = create_tween()
-	tween.tween_property(self, "scale", Vector3.ZERO, 2)
+	tween.tween_property(self, "scale", Vector3(0.01,0.01,0.01), 2)
 	tween.tween_callback(queue_free)

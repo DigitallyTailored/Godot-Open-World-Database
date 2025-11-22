@@ -1,0 +1,6 @@
+MeshInstance3D|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|2.0|{"mesh":"<BoxMesh#-9223369694872778269>"}
+	MeshInstance3D2|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<BoxMesh#-9223368674348282995>","skeleton":"../../.."}
+	MeshInstance3D3|"MeshInstance3D"|0.0,0.0,0.0|0.0,0.0,0.0|1.0,1.0,1.0|1.0|{"mesh":"<BoxMesh#-9223368674348282995>","skeleton":"../../.."}
+RESOURCES
+<BoxMesh#-9223369694872778269>:{"content_hash":"001c5113a0a6c03398e4f0faf051d08a30cb00e1160bc7d2b084d09c1b2b8452","file_path":"","original_id":"-9223369694872778269","properties":{"size":"(2.0, 0.1, 2.0)"},"type":"BoxMesh"}
+<BoxMesh#-9223368674348282995>:{"content_hash":"5df37c9c41e384d27ffb626665ae93ab3680a73dc7223baca7a87d1900c36e95","file_path":"","original_id":"-9223368674348282995","properties":{},"type":"BoxMesh"}

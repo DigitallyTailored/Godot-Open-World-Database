@@ -45,7 +45,10 @@ func _check_node_owner(node_id: int, node: Node):
 func _process_node_with_owner(node: Node):
 	if node.owner != owdb.owner and node.owner != null:
 		return
-		
+	
+	# Preserve network-spawned node names
+	var is_network_spawned = node.has_meta("_network_spawned")
+	
 	if node.has_meta("_owd_uid"):
 		if owdb.is_loading:
 			return
@@ -61,13 +64,19 @@ func _process_node_with_owner(node: Node):
 			if owdb.loaded_nodes_by_uid.has(uid):
 				var existing_node = owdb.loaded_nodes_by_uid[uid]
 				if existing_node != node and is_instance_valid(existing_node):
+					# Don't rename network-spawned nodes
+					if is_network_spawned:
+						owdb.debug("NETWORK-SPAWNED node with duplicate UID - keeping server name: ", uid)
+						owdb.loaded_nodes_by_uid[uid] = node
+						return
+					
 					var base_name = uid.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in uid else uid
 					var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
 					node.set_meta("_owd_uid", new_uid)
 					node.name = new_uid
 					
 					owdb.debug("DUPLICATE UID DETECTED: " + uid + " -> " + new_uid)
-			
+	
 	if not (node is Node3D or node.get_class() == "Node"):
 		return
 	
@@ -76,10 +85,12 @@ func _process_node_with_owner(node: Node):
 	if owdb.is_loading:
 		return
 	
-	var existing_node = owdb.get_node_by_uid(node.name)
-	if existing_node and existing_node != node:
-		_handle_node_move(node)
-		return
+	# Don't check for existing nodes if this is network-spawned
+	if not is_network_spawned:
+		var existing_node = owdb.get_node_by_uid(node.name)
+		if existing_node and existing_node != node:
+			_handle_node_move(node)
+			return
 	
 	_handle_new_node(node)
 
@@ -89,6 +100,7 @@ func _fix_parent_uid_for_children(parent: Node):
 	if parent_uid == "":
 		return
 	
+	# Fix loaded children (in tree)
 	for child in parent.get_children():
 		if not child.has_meta("_owd_uid"):
 			continue
@@ -102,6 +114,22 @@ func _fix_parent_uid_for_children(parent: Node):
 				child_info.parent_uid = parent_uid
 		
 		_fix_parent_uid_for_children(child)
+	
+	# Fix unloaded children (in database but not in tree)
+	for stored_uid in owdb.node_monitor.stored_nodes:
+		var stored_info = owdb.node_monitor.stored_nodes[stored_uid]
+		
+		# Skip if not a child of this parent
+		if stored_info.parent_uid != parent_uid:
+			continue
+		
+		# Skip if already processed (was in tree)
+		if owdb.loaded_nodes_by_uid.has(stored_uid):
+			continue
+		
+		# This is an unloaded child - ensure parent_uid is correct
+		owdb.debug("VERIFIED UNLOADED CHILD: ", stored_uid, " parent: ", parent_uid)
+
 		
 func handle_child_exiting_tree(node: Node):
 	if owdb.is_loading:
@@ -128,20 +156,34 @@ func _handle_node_move(node: Node):
 		owdb.add_to_chunk_lookup(uid, node.global_position if node is Node3D else Vector3.ZERO, node_size)
 
 func _handle_new_node(node: Node):
+	var is_network_spawned = node.has_meta("_network_spawned")
+	
 	if not node.has_meta("_owd_uid"):
 		var base_name = node.name
-		var new_name = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
-		node.set_meta("_owd_uid", new_name)
-		node.name = new_name
+		
+		# Network-spawned nodes keep their exact name from server
+		if is_network_spawned:
+			node.set_meta("_owd_uid", base_name)
+			owdb.debug("Network-spawned node using server name: ", base_name)
+		else:
+			var new_name = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
+			node.set_meta("_owd_uid", new_name)
+			node.name = new_name
 	
 	var uid = node.get_meta("_owd_uid")
 	var existing_node = owdb.get_node_by_uid(uid)
+	
 	if existing_node != null and existing_node != node:
-		var base_name = node.name.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in node.name else node.name
-		var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
-		node.set_meta("_owd_uid", new_uid)
-		node.name = new_uid
-		uid = new_uid
+		# For network-spawned nodes, replace the existing reference
+		if is_network_spawned:
+			owdb.debug("Replacing existing node reference with network-spawned node: ", uid)
+			owdb.loaded_nodes_by_uid[uid] = node
+		else:
+			var base_name = node.name.split(OpenWorldDatabase.UID_SEPARATOR)[0] if OpenWorldDatabase.UID_SEPARATOR in node.name else node.name
+			var new_uid = NodeUtils.generate_next_available_name(base_name, owdb.node_monitor.stored_nodes)
+			node.set_meta("_owd_uid", new_uid)
+			node.name = new_uid
+			uid = new_uid
 	
 	call_deferred("_handle_new_node_positioning", node)
 

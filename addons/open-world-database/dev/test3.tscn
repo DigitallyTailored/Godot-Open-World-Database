@@ -1,0 +1,40 @@
+[gd_scene load_steps=6 format=3 uid="uid://bblxlhqhxy5va"]
+
+[ext_resource type="Script" uid="uid://b46e3mat8dx5" path="res://addons/open-world-database/src/open_world_database.gd" id="1_oukvl"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_oukvl"]
+size = Vector3(1000, 0.1, 1000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drjb6"]
+albedo_color = Color(0.22526717, 0.514487, 0.43196374, 1)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_qagn4"]
+points = PackedVector3Array(-500, -0.05, -500, -500, 0.05, -500, 500, -0.05, -500, -500, -0.05, 500, -500, 0.05, 500, 500, 0.05, -500, 500, -0.05, 500, 500, 0.05, 500)
+
+[sub_resource type="BoxMesh" id="BoxMesh_t1tqr"]
+size = Vector3(2, 0.1, 2)
+
+[node name="Test3" type="Node3D"]
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17365074, -2, 0.005613327)
+mesh = SubResource("BoxMesh_oukvl")
+surface_material_override/0 = SubResource("StandardMaterial3D_drjb6")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Floor"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor/StaticBody3D"]
+shape = SubResource("ConvexPolygonShape3D_qagn4")
+
+[node name="OpenWorldDatabase" type="Node" parent="."]
+script = ExtResource("1_oukvl")
+chunk_sizes = Array[float]([1.0, 2.0, 4.0])
+threshold_ratio = 0.75
+debug_enabled = true
+metadata/_custom_type_script = "uid://b46e3mat8dx5"
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="OpenWorldDatabase"]
+mesh = SubResource("BoxMesh_t1tqr")
+metadata/_owd_uid = "MeshInstance3D"
+metadata/_owd_last_scale = Vector3(1, 1, 1)
+metadata/_owd_last_size = 2.0

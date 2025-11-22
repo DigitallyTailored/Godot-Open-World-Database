@@ -1,9 +1,4 @@
 # src/BatchProcessor.gd
-# Processes world operations in time-limited batches to maintain frame rate stability
-# Handles node loading/unloading/instantiation with configurable timing and callbacks
-# Provides both immediate and batched operation modes with queue management
-# Input: Operation requests (load/unload/instantiate), timing configurations
-# Output: Processed world changes, batch completion callbacks, operation validation
 @tool
 extends RefCounted
 class_name BatchProcessor
@@ -21,8 +16,7 @@ var batch_timer: Timer
 var is_processing_batch: bool = false
 var batch_complete_callbacks: Array[Callable] = []
 
-# Scene cache to avoid reloading the same scenes
-var scene_cache: Dictionary = {}  # scene_path -> PackedScene
+var scene_cache: Dictionary = {}
 
 enum OperationType {
 	LOAD_NODE,
@@ -142,7 +136,6 @@ func _create_node(node_source: String) -> Node:
 	var new_node: Node
 	
 	if node_source.begins_with("res://"):
-		# Check cache first
 		var scene: PackedScene = scene_cache.get(node_source)
 		if not scene:
 			scene = load(node_source)
@@ -161,45 +154,30 @@ func _create_node(node_source: String) -> Node:
 	return new_node
 
 func _instantiate_node(node_source: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> bool:
-	_debug("=== _instantiate_node START ===")
-	_debug("  Source: " + node_source)
-	_debug("  Name: " + node_name)
-	_debug("  Parent path: " + parent_path)
-	
 	var parent_node_target = _get_parent_node_for_instantiation(parent_path)
 	if not parent_node_target:
-		_debug("ERROR: Parent node not found!")
 		return false
-	
-	_debug("  Parent found: " + parent_node_target.name)
 	
 	var new_node = _create_node(node_source)
 	if not new_node:
-		_debug("ERROR: Failed to create node!")
 		return false
-	
-	_debug("  Node created: " + str(new_node))
 	
 	new_node.name = node_name
 	
-	# Mark as network-spawned if we're a client
 	if owdb and owdb.is_network_peer():
 		new_node.set_meta("_network_spawned", true)
-		_debug("  Marked as network-spawned (PEER mode)")
 	
-	if callback.is_valid():
-		_debug("  Calling callback")
-		callback.call(new_node)
-	
-	_debug("  Adding child to parent")
+	# Add to tree BEFORE calling callback (so global_position works)
 	parent_node_target.add_child(new_node)
+	
+	# Now call callback - node is in tree so global transforms work
+	if callback.is_valid():
+		callback.call(new_node)
 	
 	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
 		if not owdb.syncer.is_node_registered(new_node):
-			_debug("  Registering with syncer")
 			owdb.syncer.register_node(new_node, node_source, 1, {}, null)
 	
-	_debug("=== _instantiate_node COMPLETE ===")
 	return true
 
 func _immediate_load_node(uid: String):
@@ -211,7 +189,6 @@ func _immediate_load_node(uid: String):
 		
 	var node_info = owdb.node_monitor.stored_nodes[uid]
 	
-	# Handle parent loading logic
 	var parent_node_target = owdb
 	if node_info.parent_uid != "":
 		var parent = owdb.loaded_nodes_by_uid.get(node_info.parent_uid)
@@ -245,12 +222,10 @@ func _immediate_load_node(uid: String):
 	_debug("NODE LOADED: " + uid + " at " + str(node_info.position))
 
 func _ensure_parent_loaded(parent_uid: String) -> Node:
-	# Check if parent is already loaded
 	var existing_parent = owdb.loaded_nodes_by_uid.get(parent_uid)
 	if existing_parent:
 		return existing_parent
 	
-	# Check if parent exists in database
 	if not owdb.node_monitor.stored_nodes.has(parent_uid):
 		return owdb
 	
@@ -258,9 +233,7 @@ func _ensure_parent_loaded(parent_uid: String) -> Node:
 	var parent_size_cat = owdb.get_size_category(parent_info.size)
 	var parent_chunk_pos = NodeUtils.get_chunk_position(parent_info.position, owdb.chunk_sizes[parent_size_cat]) if parent_size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
 	
-	# Check if parent's chunk should be loaded
 	if owdb.chunk_manager.is_chunk_loaded(parent_size_cat, parent_chunk_pos):
-		# Recursively load the parent
 		_immediate_load_node(parent_uid)
 		return owdb.loaded_nodes_by_uid.get(parent_uid, owdb)
 	else:
@@ -275,8 +248,6 @@ func _immediate_unload_node(uid: String):
 		return
 	
 	owdb.nodes_being_unloaded[uid] = true
-	
-	# FIXED: Mark all children as being unloaded
 	_mark_children_as_unloading(node)
 	
 	var node_info = owdb.node_monitor.stored_nodes.get(uid, {})
@@ -293,7 +264,6 @@ func _immediate_unload_node(uid: String):
 	_debug("NODE UNLOADED: " + uid)
 
 func _mark_children_as_unloading(node: Node):
-	"""Recursively mark all children as being unloaded"""
 	for child in node.get_children():
 		var child_uid = NodeUtils.get_valid_node_uid(child)
 		if child_uid != "":
@@ -308,24 +278,19 @@ func _remove_scene_node(node_name: String) -> bool:
 	var node = owdb.loaded_nodes_by_uid.get(node_name)
 	if node and is_instance_valid(node):
 		node.queue_free()
-		owdb.loaded_nodes_by_uid.erase(node_name)
-		return true
-	return false
+	owdb.loaded_nodes_by_uid.erase(node_name)
+	return true
 
 func _get_parent_node_for_instantiation(parent_path: String) -> Node:
+	if parent_path.is_empty():
+		return owdb if owdb else _get_scene_tree().current_scene
+	
 	var tree = _get_scene_tree()
 	if not tree or not tree.current_scene:
 		return null
 	
-	if parent_path.is_empty():
-		return tree.current_scene
-	
-	var parent_node_result = tree.current_scene.get_node(parent_path)
-	if not parent_node_result:
-		push_error("Parent path not found: " + parent_path)
-		return tree.current_scene
-	
-	return parent_node_result
+	var parent_node_result = tree.current_scene.get_node_or_null(parent_path)
+	return parent_node_result if parent_node_result else tree.current_scene
 
 func _is_load_operation_valid(uid: String) -> bool:
 	if not owdb or not owdb.node_monitor.stored_nodes.has(uid):

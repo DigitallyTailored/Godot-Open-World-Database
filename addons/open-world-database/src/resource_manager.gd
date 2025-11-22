@@ -218,9 +218,14 @@ func restore_resource(resource_id: String) -> Resource:
 		return null
 	
 	for prop_name in info.properties:
-		var value = _deserialize_property_value(info.properties[prop_name])
+		var stored_value = _deserialize_property_value(info.properties[prop_name])
 		if resource.has_method("set") and prop_name in resource:
-			resource.set(prop_name, value)
+			# Get current value for type conversion
+			var current_value = resource.get(prop_name)
+			# Convert string representations to proper types (Vector3, Vector2, Color, etc.)
+			var converted_value = NodeUtils.convert_property_value(stored_value, current_value)
+			resource.set(prop_name, converted_value)
+			owdb.debug("Applied resource property '", prop_name, "': ", converted_value)
 	
 	owdb.debug("Restored builtin resource: ", resource_id)
 	return resource
