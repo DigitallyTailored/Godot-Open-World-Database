@@ -412,6 +412,8 @@ func _on_child_entered_tree(node: Node):
 	node_handler.call_deferred("handle_child_entered_tree", node)
 
 func _on_child_exiting_tree(node: Node):
+	if is_loading:
+		return
 	node_handler.handle_child_exiting_tree(node)
 
 func get_all_owd_nodes() -> Array:
@@ -478,35 +480,26 @@ func _remove_node_and_children_from_database(uid: String, node = null):
 		if node_monitor.stored_nodes[child_uid].parent_uid == uid:
 			child_uids.append(child_uid)
 	
-	# Only remove children that are currently loaded and still parented to THIS node instance
-	# Preserve unloaded children and reparented children in database
 	for child_uid in child_uids:
 		var child_node = loaded_nodes_by_uid.get(child_uid)
 		
 		if child_node and is_instance_valid(child_node) and child_node.is_inside_tree():
-			# If we have the node instance, compare actual parent to THIS node instance
 			if node and is_instance_valid(node):
 				var actual_parent = child_node.get_parent()
 				
 				if actual_parent == node:
-					# Child is still parented to THIS specific node instance - remove it
 					_remove_node_and_children_from_database(child_uid, child_node)
 				else:
-					# Child has been reparented to a different node instance
-					# (could be new node with same UID after type change)
 					debug("PRESERVING REPARENTED CHILD: ", child_uid, " (different parent instance)")
 					
-					# Update parent_uid if the new parent has a different UID
 					var new_parent_uid = NodeUtils.get_valid_node_uid(actual_parent) if actual_parent else ""
 					if new_parent_uid != "" and new_parent_uid != uid:
 						var child_info = node_monitor.stored_nodes[child_uid]
 						child_info.parent_uid = new_parent_uid
 						debug("  Updated parent_uid: ", uid, " -> ", new_parent_uid)
 			else:
-				# No node instance provided - can't verify parent relationship, preserve child
 				debug("PRESERVING CHILD (no node instance to verify): ", child_uid)
 		else:
-			# Child is unloaded - preserve in database
 			debug("PRESERVING UNLOADED CHILD: ", child_uid)
 	
 	node_monitor.remove_node_resources(uid)
@@ -559,8 +552,38 @@ func debugAll():
 
 func _notification(what: int) -> void:
 	if Engine.is_editor_hint():
-		if what == NOTIFICATION_EDITOR_PRE_SAVE:
+		#if what == 17:
+		#	return
+		#print("OWDB NOTIFCATION: ", what)
+		
+		if what == NOTIFICATION_EXIT_TREE:
+			debug("Scene exiting tree - preserving database")
+			is_loading = true
+			_remove_editor_camera_position()
+		
+		elif what == NOTIFICATION_ENTER_TREE:
+			debug("Scene entering tree")
+			# If database exists, we're switching back (not initial load)
+			if node_monitor and not node_monitor.stored_nodes.is_empty():
+				# Restore immediately - database already loaded
+				call_deferred("_set_loading_false")
+		
+		elif what == NOTIFICATION_READY:
+			# Only fires on initial load
+			debug("Scene ready (initial load)")
+			is_loading = false
+			if follow_editor_camera:
+				call_deferred("_create_editor_camera_position")
+		
+		elif what == NOTIFICATION_EDITOR_PRE_SAVE:
 			save_database()
+
+func _set_loading_false():
+	debug("Restoring normal operation after scene switch")
+	is_loading = false
+	if follow_editor_camera:
+		_create_editor_camera_position()
+
 
 func _unload_node_not_in_chunk(node_instance_id: int):
 	var node = instance_from_id(node_instance_id)
@@ -575,7 +598,6 @@ func _unload_node_not_in_chunk(node_instance_id: int):
 		nodes_being_unloaded[uid] = true
 		loaded_nodes_by_uid.erase(uid)
 		
-		# FIXED: Mark all children as being unloaded
 		_mark_children_as_unloading(node)
 		
 		if syncer and is_instance_valid(syncer) and node.has_meta("_network_spawned"):
@@ -587,7 +609,6 @@ func _unload_node_not_in_chunk(node_instance_id: int):
 	is_loading = was_loading
 
 func _mark_children_as_unloading(node: Node):
-	"""Recursively mark all children as being unloaded to prevent database removal"""
 	for child in node.get_children():
 		var child_uid = NodeUtils.get_valid_node_uid(child)
 		if child_uid != "":

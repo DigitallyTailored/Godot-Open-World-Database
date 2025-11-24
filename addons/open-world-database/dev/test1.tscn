@@ -12,6 +12,7 @@ debug_enabled = true
 metadata/_custom_type_script = "uid://b46e3mat8dx5"
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="OpenWorldDatabase"]
+transform = Transform3D(0.88280827, 0.46973354, 0, -0.46973354, 0.88280827, 0, 0, 0, 1, 0, 0, 0)
 mesh = SubResource("BoxMesh_5d7k7")
 metadata/_owd_uid = "MeshInstance3D"
 metadata/_owd_last_scale = Vector3(1, 1, 1)
