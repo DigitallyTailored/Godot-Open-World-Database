@@ -167,10 +167,8 @@ func _instantiate_node(node_source: String, node_name: String, parent_path: Stri
 	if owdb and owdb.is_network_peer():
 		new_node.set_meta("_network_spawned", true)
 	
-	# Add to tree BEFORE calling callback (so global_position works)
 	parent_node_target.add_child(new_node)
 	
-	# Now call callback - node is in tree so global transforms work
 	if callback.is_valid():
 		callback.call(new_node)
 	
@@ -309,14 +307,48 @@ func _is_unload_operation_valid(uid: String) -> bool:
 	if not owdb or not owdb.node_monitor.stored_nodes.has(uid):
 		return false
 	
+	var is_currently_loaded = owdb.loaded_nodes_by_uid.has(uid)
+	if not is_currently_loaded:
+		return false
+	
+	var node = owdb.loaded_nodes_by_uid[uid]
+	if not is_instance_valid(node):
+		return false
+	
 	var node_info = owdb.node_monitor.stored_nodes[uid]
+	
+	if node is Node3D:
+		var old_position = node_info.position
+		var old_size = node_info.size
+		var current_pos = node.global_position
+		var current_size = NodeUtils.calculate_node_size(node)
+		
+		var position_changed = current_pos.distance_squared_to(old_position) > 0.0001
+		var size_changed = abs(current_size - old_size) > 0.01
+		
+		if position_changed or size_changed:
+			owdb.remove_from_chunk_lookup(uid, old_position, old_size)
+			
+			node_info.position = current_pos
+			node_info.rotation = node.global_rotation
+			node_info.size = current_size
+			
+			owdb.add_to_chunk_lookup(uid, current_pos, current_size)
+			_debug("Node " + uid + " moved/resized during unload check - reallocated to chunk")
+	
 	var size_cat = owdb.get_size_category(node_info.size)
-	var chunk_pos = Vector2i(int(node_info.position.x / owdb.chunk_sizes[size_cat]), int(node_info.position.z / owdb.chunk_sizes[size_cat])) if size_cat != OpenWorldDatabase.Size.ALWAYS_LOADED else OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
+	var chunk_pos: Vector2i
+	if size_cat == OpenWorldDatabase.Size.ALWAYS_LOADED:
+		chunk_pos = OpenWorldDatabase.ALWAYS_LOADED_CHUNK_POS
+	else:
+		chunk_pos = Vector2i(
+			int(node_info.position.x / owdb.chunk_sizes[size_cat]),
+			int(node_info.position.z / owdb.chunk_sizes[size_cat])
+		)
 	
 	var chunk_should_be_loaded = owdb.chunk_manager.is_chunk_loaded(size_cat, chunk_pos)
-	var is_currently_loaded = owdb.loaded_nodes_by_uid.has(uid)
 	
-	return not chunk_should_be_loaded and is_currently_loaded
+	return not chunk_should_be_loaded
 
 func queue_operation(type: OperationType, data: Dictionary, callback: Callable = Callable()) -> String:
 	var operation_id = _generate_operation_id()
@@ -330,11 +362,8 @@ func queue_operation(type: OperationType, data: Dictionary, callback: Callable =
 	operation_order.append(operation_id)
 	
 	_debug("Operation queued: " + str(type) + " ID: " + operation_id)
-	_debug("  Batch timer running: " + str(batch_timer.time_left > 0))
-	_debug("  Batch processing enabled: " + str(batch_processing_enabled))
 	
 	if batch_processing_enabled and not batch_timer.time_left > 0:
-		_debug("Starting batch timer")
 		batch_timer.start()
 	
 	return operation_id
@@ -354,21 +383,13 @@ func unload_node(uid: String):
 			_immediate_unload_node(uid)
 
 func instantiate_scene(scene_path: String, node_name: String, parent_path: String = "", callback: Callable = Callable()) -> String:
-	_debug("=== instantiate_scene called ===")
-	_debug("  Scene path: " + scene_path)
-	_debug("  Node name: " + node_name)
-	_debug("  Parent path: " + parent_path)
-	_debug("  Batch processing enabled: " + str(batch_processing_enabled))
-	
 	if batch_processing_enabled:
-		_debug("Queueing instantiate operation")
 		return queue_operation(OperationType.INSTANTIATE_SCENE, {
 			"scene_path": scene_path,
 			"node_name": node_name,
 			"parent_path": parent_path
 		}, callback)
 	else:
-		_debug("Processing instantiate immediately")
 		_instantiate_node(scene_path, node_name, parent_path, callback)
 		return node_name
 
