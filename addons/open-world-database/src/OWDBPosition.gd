@@ -3,6 +3,10 @@
 extends Node3D
 class_name OWDBPosition
 
+@export_category("General")
+## How many times the OWDBPosition will wait one frame for the OWDB to set up its chunk manager in the event of a delay
+@export var max_retries: int = 60
+
 var last_position: Vector3 = Vector3.INF
 var owdb: OpenWorldDatabase
 var position_id: String = ""
@@ -16,6 +20,21 @@ func _ready():
 	if owdb and owdb.chunk_manager:
 		position_id = owdb.chunk_manager.register_position(self)
 		call_deferred("force_update")
+	
+	# handle a delay for the owdb to set up its chunk manager
+	elif owdb and not owdb.chunk_manager:
+		var retries = max_retries
+		push_warning("No chunk manager attached to OWDB, waiting...")
+		while not owdb.chunk_manager and retries:
+			await get_tree().process_frame
+			retries -= 1
+		
+		if owdb.chunk_manager:
+			push_warning("Found OWDB chunk manager")
+			position_id = owdb.chunk_manager.register_position(self)
+			call_deferred("force_update")
+		else:
+			push_error("Max Retries Exceeded: OWDB has no chunk manager")
 	
 	# FIXED: Only do syncer registration in runtime, not editor
 	if not Engine.is_editor_hint() and owdb and owdb.syncer and is_instance_valid(owdb.syncer):
