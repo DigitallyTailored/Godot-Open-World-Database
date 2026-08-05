@@ -4,6 +4,7 @@ extends Node3D
 class_name OWDBPosition
 
 @export_category("General")
+## How many times the OWDBPosition will wait one frame for the OWDB to set up its chunk manager in the event of a delay
 @export var max_retries: int = 60
 
 var last_position: Vector3 = Vector3.INF
