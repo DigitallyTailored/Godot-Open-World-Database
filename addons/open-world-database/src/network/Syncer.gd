@@ -287,7 +287,7 @@ func unregister_node(node: Node3D) -> void:
 	if not _sync_nodes.has(node_name):
 		return
 		
-	if multiplayer.is_server():
+	if multiplayer and multiplayer.is_server():
 		for peer_id in _peer_nodes_observing.keys():
 			if peer_has_node(peer_id, node_name):
 				if peer_id == 1:
