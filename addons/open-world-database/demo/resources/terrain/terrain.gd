@@ -5,46 +5,113 @@ extends Node3D
 ## Generates a terrain mesh with collision and vertex colors using Godot's built-in noise
 
 @export_group("Terrain Settings")
-@export var terrain_size: Vector2i = Vector2i(100, 100)
-@export var terrain_scale: Vector2 = Vector2(50.0, 50.0)
-@export var height_scale: float = 10.0
+@export var terrain_size: Vector2i = Vector2i(100, 100):
+	set(value):
+		terrain_size = value
+		_queue_auto_regeneration()
+@export var terrain_scale: Vector2 = Vector2(50.0, 50.0):
+	set(value):
+		terrain_scale = value
+		_queue_auto_regeneration()
+@export var height_scale: float = 10.0:
+	set(value):
+		height_scale = value
+		_queue_auto_regeneration()
 
 @export_group("Noise Settings")
-@export var noise_seed: int = 12345
-@export var noise_frequency: float = 0.1
-@export var noise_octaves: int = 4
-@export var noise_lacunarity: float = 2.0
-@export var noise_gain: float = 0.5
+@export var noise_seed: int = 12345:
+	set(value):
+		noise_seed = value
+		_queue_auto_regeneration()
+@export var noise_frequency: float = 0.1:
+	set(value):
+		noise_frequency = value
+		_queue_auto_regeneration()
+@export var noise_octaves: int = 4:
+	set(value):
+		noise_octaves = value
+		_queue_auto_regeneration()
+@export var noise_lacunarity: float = 2.0:
+	set(value):
+		noise_lacunarity = value
+		_queue_auto_regeneration()
+@export var noise_gain: float = 0.5:
+	set(value):
+		noise_gain = value
+		_queue_auto_regeneration()
 
 @export_group("Colors")
-@export var water_color: Color = Color.BLUE
-@export var sand_color: Color = Color.SANDY_BROWN
-@export var grass_color: Color = Color.GREEN
-@export var rock_color: Color = Color.GRAY
-@export var snow_color: Color = Color.WHITE
-@export var material : Material
+@export var water_color: Color = Color.BLUE:
+	set(value):
+		water_color = value
+		_queue_auto_regeneration()
+@export var sand_color: Color = Color.SANDY_BROWN:
+	set(value):
+		sand_color = value
+		_queue_auto_regeneration()
+@export var grass_color: Color = Color.GREEN:
+	set(value):
+		grass_color = value
+		_queue_auto_regeneration()
+@export var rock_color: Color = Color.GRAY:
+	set(value):
+		rock_color = value
+		_queue_auto_regeneration()
+@export var snow_color: Color = Color.WHITE:
+	set(value):
+		snow_color = value
+		_queue_auto_regeneration()
+@export var material: Material:
+	set(value):
+		material = value
+		_queue_auto_regeneration()
 
 @export_group("Height Thresholds")
-@export var water_level: float = 0.2
-@export var sand_level: float = 0.3
-@export var grass_level: float = 0.6
-@export var rock_level: float = 0.8
+@export var water_level: float = 0.2:
+	set(value):
+		water_level = value
+		_queue_auto_regeneration()
+@export var sand_level: float = 0.3:
+	set(value):
+		sand_level = value
+		_queue_auto_regeneration()
+@export var grass_level: float = 0.6:
+	set(value):
+		grass_level = value
+		_queue_auto_regeneration()
+@export var rock_level: float = 0.8:
+	set(value):
+		rock_level = value
+		_queue_auto_regeneration()
 
 @export_group("Generation")
 @export var generate_on_ready: bool = true
-@export var auto_regenerate: bool = false
+@export var auto_regenerate: bool = false:
+	set(value):
+		auto_regenerate = value
+		_queue_auto_regeneration()
 
 var mesh_instance: MeshInstance3D
 var collision_shape: CollisionShape3D
 var static_body: StaticBody3D
 var noise: FastNoiseLite
+var _regeneration_queued: bool = false
 
 func _ready():
 	if generate_on_ready:
 		generate_terrain()
 
-func _validate_property(property):
-	if property.name == "auto_regenerate" and auto_regenerate:
+func _queue_auto_regeneration():
+	if not is_node_ready() or not Engine.is_editor_hint() or not auto_regenerate:
+		return
+	if _regeneration_queued:
+		return
+	_regeneration_queued = true
+	call_deferred("_run_auto_regeneration")
+
+func _run_auto_regeneration():
+	_regeneration_queued = false
+	if is_inside_tree() and auto_regenerate:
 		generate_terrain()
 
 @export var regenerate: bool = false : set = _regenerate
