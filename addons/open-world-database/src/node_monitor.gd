@@ -129,6 +129,9 @@ func _deserialize_property_value(stored_value, current_value) -> Variant:
 		var restored_resource = resource_manager.restore_resource(stored_value)
 		owdb.debug("Restored resource: ", stored_value)
 		return restored_resource
+	elif stored_value is String and stored_value.begins_with("file:res://"):
+		# File resource missing from the registry: load it straight from disk
+		return load(stored_value.substr(5))
 	elif stored_value is Array:
 		var deserialized_array = []
 		var current_array = current_value if current_value is Array else []
