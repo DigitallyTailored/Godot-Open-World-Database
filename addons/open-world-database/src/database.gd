@@ -177,7 +177,11 @@ func _load_database_from_path(db_path: String):
 		
 		if in_resources_section:
 			if ":" in line:
-				var colon_pos = line.find(":")
+				# File resource ids look like "file:res://path.tres" and contain ":" themselves,
+				# so split where the JSON payload starts instead of at the first colon.
+				var colon_pos = line.find(":{")
+				if colon_pos == -1:
+					colon_pos = line.find(":")
 				var resource_id = line.substr(0, colon_pos)
 				var resource_json = line.substr(colon_pos + 1)
 				_load_single_resource(resource_id, resource_json)
