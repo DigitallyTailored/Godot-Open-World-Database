@@ -83,6 +83,9 @@ func delete_custom_database(database_name: String) -> bool:
 	return false
 
 func _save_database_to_path(db_path: String):
+	if Engine.is_editor_hint():
+		_reconcile_scene_nodes(owdb)
+	
 	for uid in owdb.loaded_nodes_by_uid.keys():
 		if not owdb.node_monitor.stored_nodes.has(uid):
 			continue
@@ -121,6 +124,34 @@ func _save_database_to_path(db_path: String):
 	file.close()
 	owdb.debug("Database saved successfully with resources to: ", db_path)
 
+
+# Nodes that share their _owd_uid with another node (e.g. after duplicating in the editor)
+# or that were never registered are left out of the .owdb and vanish at runtime.
+# Before saving, give every scene node under the OWDB its own uid and register it.
+func _reconcile_scene_nodes(parent: Node):
+	for child in parent.get_children():
+		if child.owner != owdb.owner or not (child is Node3D or child.get_class() == "Node"):
+			continue
+		var uid := str(child.get_meta("_owd_uid", ""))
+		var holder = owdb.loaded_nodes_by_uid.get(uid) if uid != "" else null
+		var holder_ok: bool = holder != null and is_instance_valid(holder) and holder.is_inside_tree()
+		if uid == "" or (holder_ok and holder != child):
+			var new_uid := NodeUtils.generate_next_available_name(str(child.name), owdb.node_monitor.stored_nodes)
+			child.name = new_uid
+			new_uid = str(child.name)
+			owdb.debug("RECONCILE: " + str(child.name) + " shared uid '" + uid + "' -> " + new_uid)
+			child.set_meta("_owd_uid", new_uid)
+			_register_reconciled(child, new_uid)
+		elif holder != child or not owdb.node_monitor.stored_nodes.has(uid):
+			_register_reconciled(child, uid)
+		_reconcile_scene_nodes(child)
+
+func _register_reconciled(node: Node, uid: String):
+	owdb.loaded_nodes_by_uid[uid] = node
+	owdb.node_monitor.update_stored_node(node, true)
+	var info = owdb.node_monitor.stored_nodes[uid]
+	owdb.add_to_chunk_lookup(uid, info.position, info.size)
+	owdb._setup_listeners(node)
 
 func _write_resource_registry(file: FileAccess):
 	var resources = owdb.node_monitor.resource_manager.serialize_resources()
