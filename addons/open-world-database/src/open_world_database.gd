@@ -243,7 +243,7 @@ func _process(_delta):
 				_update_editor_camera_position()
 
 func _is_current_edited_scene() -> bool:
-	var edited_scene = EditorInterface.get_edited_scene_root()
+	var edited_scene = Engine.get_singleton("EditorInterface").get_edited_scene_root()
 	if not edited_scene:
 		return false
 	
@@ -265,7 +265,7 @@ func _get_editor_camera() -> Camera3D:
 	if not Engine.is_editor_hint():
 		return null
 	
-	var editor_viewport = EditorInterface.get_editor_viewport_3d(0)
+	var editor_viewport = Engine.get_singleton("EditorInterface").get_editor_viewport_3d(0)
 	if editor_viewport:
 		return editor_viewport.get_camera_3d()
 	

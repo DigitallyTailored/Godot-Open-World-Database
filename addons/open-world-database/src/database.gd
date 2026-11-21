@@ -17,7 +17,7 @@ func get_database_path() -> String:
 	var scene_path: String = ""
 	
 	if Engine.is_editor_hint():
-		var edited_scene = EditorInterface.get_edited_scene_root()
+		var edited_scene = Engine.get_singleton("EditorInterface").get_edited_scene_root()
 		if edited_scene:
 			scene_path = edited_scene.scene_file_path
 	else:
